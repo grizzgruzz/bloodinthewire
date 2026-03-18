@@ -1,0 +1,4 @@
+DRY   ts=2026-03-18T21:01:41Z  run_gate_roll=0.6228  p_run=1.00  media_gate_roll=0.0806  p_media=0.70  media=yes (dry-run, would use incoming)  title='test :: dry run'  depth_cap=30
+SKIP  ts=2026-03-18T21:01:43Z  run_gate_roll=0.4133  p_run=0.00
+PUB   ts=2026-03-18T21:08:15Z  run_gate_roll=0.6026  p_run=0.50  media_gate_roll=0.9315  p_media=0.70  media=no  title='Arrow Keeps Pointing Left'  depth_cap=30
+PUB   ts=2026-03-18T21:58:26Z  run_gate_roll=0.8046  p_run=0.50  media_gate_roll=0.1700  p_media=0.70  media=yes  img_src=incoming  img=3a7d46c6-d3e3-421b-b2b1-1257d850f6c3_20260318-145826.png  title='Arrow Keeps Pointing Left'  depth_cap=30
