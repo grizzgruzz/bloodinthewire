@@ -709,11 +709,18 @@ def make_node_page(
     parent_href: relative link back to the page that spawned this node.
                  Defaults to '../index.html' (root).  Used to wire up
                  static up-navigation (House-of-Leaves feel).
+
+    The node is marked with data-node-status="pending" until content arrives
+    via a deeper branch roll. This ensures no node shell is silently orphaned:
+    the status attribute is machine-readable for consistency checks, and the
+    visible notice tells readers the thread continues.
     """
     # Navigation: up goes to parent; home always goes to entrypoint
     parent_label = 'return to parent' if parent_href != '../index.html' else 'return to entrypoint'
     nav_up = f'<p class="nav-up"><a href="{_html.escape(parent_href)}">[up] {parent_label}</a></p>'
     nav_home = '' if parent_href == '../index.html' else '<p class="nav-home"><a href="../index.html">[home] return to entrypoint</a></p>'
+    # Separator: only render nav_home block if non-empty (don't double up index link)
+    footer_home = f'\n      {nav_home}' if nav_home else ''
 
     return f"""<!doctype html>
 <html lang="en">
@@ -734,11 +741,13 @@ def make_node_page(
       <hr />
     </header>
 
-    <div class="node-shell">
+    <div class="node-shell" data-node-status="pending">
       <p class="node-label">NODE :: {_html.escape(node_slug)} // generated: {posted_date}</p>
       <!-- CASCADE:START -->
       <!-- future posts may land here via deeper branch rolls -->
+      <!-- node pending: thread continues — documentation in progress -->
       <!-- CASCADE:END -->
+      <p class="tiny-note node-pending-notice">// thread continues — documentation in progress</p>
     </div>
 
     <div class="node-threads">
@@ -751,8 +760,7 @@ def make_node_page(
 
     <footer>
       <hr />
-      {nav_up}
-      {nav_home}
+      {nav_up}{footer_home}
       <p class="tiny-note">depth={depth} // branched: {posted_date}</p>
     </footer>
   </main>
@@ -805,6 +813,7 @@ def make_content_page(
     parent_label = 'return to parent' if parent_href != '../index.html' else 'return to entrypoint'
     nav_up = f'<p class="nav-up"><a href="{_html.escape(parent_href)}">[up] {parent_label}</a></p>'
     nav_home = '' if parent_href == '../index.html' else '<p class="nav-home"><a href="../index.html">[home] return to entrypoint</a></p>'
+    footer_home = f'\n      {nav_home}' if nav_home else ''
 
     return f"""<!doctype html>
 <html lang="en">
@@ -827,8 +836,7 @@ def make_content_page(
 {ts_block}{body_block}{img_block}{frag_link}
     <footer>
       <hr />
-      {nav_up}
-      {nav_home}
+      {nav_up}{footer_home}
       <p class="tiny-note">depth={depth} // posted: {posted_date}</p>
     </footer>
   </main>

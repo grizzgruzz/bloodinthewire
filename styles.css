@@ -498,3 +498,22 @@ marquee {
     margin-left: 0;
   }
 }
+
+/* ── Nav affordances (v7 up/down/home) ───────────────────────────────── */
+.nav-up, .nav-down, .nav-home {
+  margin: 4px 0;
+  font-size: .85rem;
+}
+
+.nav-up a, .nav-down a, .nav-home a {
+  color: #7c7570;
+  text-decoration: none;
+  letter-spacing: .5px;
+}
+
+.nav-up a:hover, .nav-down a:hover, .nav-home a:hover {
+  color: var(--link);
+}
+
+.nav-up::before  { content: ''; }
+.nav-down::before { content: ''; }
