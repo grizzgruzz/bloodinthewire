@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": 1,
-    "note": "Permanent record of branch decisions. Never modify manually \u2014 branch_publish.py appends here."
+    "note": "Permanent record of branch decisions. Never modify manually — branch_publish.py appends here."
   },
   "entries": [
     {
@@ -59,6 +59,90 @@
       "posted_date": "2026-03-17",
       "action": "inline",
       "page": "index.html"
+    },
+    {
+      "entry_id": "hyperlink-migration-sighting-0002",
+      "title": "migration :: sighting-0002 destination rewrite",
+      "depth": 1,
+      "roll": 1,
+      "action": "inline",
+      "dest_page": "fragments/sighting-0002.html",
+      "dest_type": "content",
+      "orientation": "vertical",
+      "timestamp_utc": "2026-03-18T06:50:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Hyperlink content migration: destination rewritten in locked voice, different from surface card. Roll=1 terminal."
+    },
+    {
+      "entry_id": "hyperlink-migration-sighting-0003",
+      "title": "migration :: sighting-0003 destination rewrite",
+      "depth": 1,
+      "roll": 0,
+      "action": "link-existing",
+      "dest_page": "fragments/sighting-0002.html",
+      "dest_type": "existing-content",
+      "convergence": true,
+      "convergence_score": 3,
+      "convergence_threshold": 1,
+      "orientation": "vertical",
+      "timestamp_utc": "2026-03-18T06:50:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Hyperlink content migration: destination rewritten. Roll=0, convergence hit sighting-0002 (face+location+pattern). Branching ends."
+    },
+    {
+      "entry_id": "hyperlink-migration-sighting-20260317-224643",
+      "title": "migration :: orbit-map destination rewrite",
+      "depth": 1,
+      "roll": 0,
+      "action": "link",
+      "dest_page": "nodes/node-orbit-map-d1-20260317.html",
+      "dest_type": "node",
+      "orientation": "vertical",
+      "timestamp_utc": "2026-03-18T06:50:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Hyperlink content migration: destination rewritten (different angle from surface card). Roll=0, no convergence, new junction node spawned."
+    },
+    {
+      "entry_id": "hyperlink-migration-map-thread-a",
+      "title": "migration :: map-thread-a destination rewrite",
+      "depth": 1,
+      "roll": 0,
+      "action": "link-existing",
+      "dest_page": "fragments/sighting-0002.html",
+      "dest_type": "existing-content",
+      "convergence": true,
+      "convergence_score": 1,
+      "convergence_threshold": 1,
+      "orientation": "vertical",
+      "timestamp_utc": "2026-03-18T06:50:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Hyperlink content migration: stub rewritten in locked voice. Roll=0, convergence hit sighting-0002 (location). Branching ends."
+    },
+    {
+      "entry_id": "hyperlink-migration-street-log-01",
+      "title": "migration :: street-log-01 destination rewrite",
+      "depth": 1,
+      "roll": 1,
+      "action": "inline",
+      "dest_page": "fragments/street-log-01.html",
+      "dest_type": "content",
+      "orientation": "vertical",
+      "timestamp_utc": "2026-03-18T06:50:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Hyperlink content migration: stub rewritten in locked voice. Roll=1 terminal."
+    },
+    {
+      "entry_id": "hyperlink-migration-frequency-note-03",
+      "title": "migration :: frequency-note-03 destination rewrite",
+      "depth": 1,
+      "roll": 0,
+      "action": "link",
+      "dest_page": "nodes/node-freq-signal-d2-20260317.html",
+      "dest_type": "node",
+      "orientation": "vertical",
+      "timestamp_utc": "2026-03-18T06:50:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Hyperlink content migration: stub rewritten in locked voice. Roll=0, no convergence, new junction node spawned."
     }
   ]
 }

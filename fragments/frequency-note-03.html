@@ -1,3 +1,43 @@
 <!doctype html>
-<html data-motif="frequency,audio,signal,speech,clipping,interval,repeat,radio,wave,name,anomaly"><head><meta charset="utf-8"><title>frequency-note-03</title><link rel="stylesheet" href="../styles.css"></head>
-<body><main class="container"><h2>frequency-note-03</h2><p>audio clipping repeats in a 9-second interval. speech-to-text keeps inventing the same name.</p><p><a href="../index.html">return</a></p></main></body></html>
+<html lang="en" data-motif="frequency,audio,signal,speech,clipping,interval,repeat,radio,wave,name,anomaly,transcription,nine,seconds,pattern,software,invented">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bloodinthewire :: frequency-note-03</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <p class="stamp">AUDIO ANOMALY // no timestamp // 2026-03-17</p>
+      <h2>frequency-note-03</h2>
+      <hr />
+    </header>
+
+    <div class="wire-body">
+      <p>I have been running the recorded clip through the speech-to-text tool four different times now and each time, at the 9-second interval, it produces the same word. Not a real word in the audio. There is no speech at that point in the recording. What is in the audio at that point is a clipping artifact, a small amplitude dropout, the kind you get from interference or a failing connector. The software is not transcribing what is there. It is inventing a word to fill what it cannot interpret, and every time I run it the word it invents is the same word.</p>
+      <p>I want to explain why this is significant. Speech-to-text software hallucinates text from noise all the time, that is not new information, I understand that. What is new is the consistency. If the artifact were purely noise the hallucinations should vary run to run because the model weights its guesses probabilistically. Consistent output from probabilistic noise input means the noise is structured. The artifact is producing a signal that the model reads the same way every time. Which means the artifact is not random interference. The artifact has a shape that maps to a specific token in the model's vocabulary, reliably, across four separate inference passes.</p>
+      <p>The word it produces is a name. I am not going to write it here. I wrote it down in the pad in the glove box and then I drove to my brother-in-law's house and without telling him what I had been hearing I asked him if that name meant anything to him. He said yes. That answer is currently the most frightening thing I have experienced in the course of this entire documentation process and that is a list that includes a man disappearing from camera footage for three consecutive minutes.</p>
+      <p>The nine-second interval is exact. Not approximately nine seconds. Exactly nine, to the frame. I have the waveform exported. It will be on this thread once I figure out how to host it in a way that does not require an account that can be accessed.</p>
+    </div>
+
+    <!-- branch: link  depth=1  seed=0  orient=vertical  (no convergence → new node) -->
+    <section class="cascade-block cascade-node cp-b cascade-orient-vertical"
+      data-entry="frequency-note-03-signal-thread"
+      data-type="link"
+      data-depth="1"
+      data-branch-seed="0"
+      data-orientation="vertical">
+      <h2>signal thread // waveform analysis</h2>
+      <span class="lean-link"><a href="../nodes/node-freq-signal-d2-20260317.html">open node</a> <span class="stamp">// structured artifact // interval analysis // waveform pending</span></span>
+      <p class="stamp">thread continues</p>
+    </section>
+
+    <footer>
+      <hr />
+      <p><a href="../index.html">return to entrypoint</a></p>
+      <p class="tiny-note">related: <a href="sighting-20260317-224643.html">sighting-20260317-224643</a> // the name appeared in both contexts // filed: 2026-03-17</p>
+    </footer>
+  </main>
+</body>
+</html>

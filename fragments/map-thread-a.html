@@ -1,3 +1,42 @@
 <!doctype html>
-<html data-motif="map,route,pins,location,thread,navigation,browser,deleted,history,spatial,trail"><head><meta charset="utf-8"><title>map-thread-a</title><link rel="stylesheet" href="../styles.css"></head>
-<body><main class="container"><h2>map-thread-a</h2><p>three pins removed after refresh. browser history still shows the route request.</p><p><a href="../index.html">return</a></p></main></body></html>
+<html lang="en" data-motif="map,route,pins,location,thread,navigation,browser,deleted,history,spatial,trail,remove,refresh,request,cache">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bloodinthewire :: map-thread-a</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <p class="stamp">LOCATION THREAD // no timestamp // 2026-03-17</p>
+      <h2>map-thread-a</h2>
+      <hr />
+    </header>
+
+    <div class="wire-body">
+      <p>I had a map open in the browser, one of the standard ones, with seven pins I had placed over the past three weeks. All the locations where I had documented him. I refreshed the page because it was loading slow and when it came back three of the pins were gone. Not the oldest ones, not the newest ones. Three from the middle. There is no mechanism in that software for selectively removing three mid-sequence pins from a saved list unless someone accessed the account, but the account session was still active on my device and I had not logged out, which means either the session was accessed remotely while still valid or the server-side list was edited directly. I understand how that sounds.</p>
+      <p>What the browser history shows is the route request from the previous day is still there, pointing to an address that corresponds to one of the removed pins. The route request did not disappear. Only the pin did. I do not know what that distinction means but I believe it means something because the route request is client-side history and the pin was server-side storage. Whoever removed it had write access to the server-side data but apparently did not think to also clear the local history. That is a specific kind of partial cleanup. That is the kind of cleanup that knows what it is doing but worked faster than it should have.</p>
+      <p>I have the four remaining pins and the browser history from the day before. I am not relisting the addresses here. If the map can be edited, this page can be edited, and I am not interested in making it easier to clean the record a second time. I have the printout. I have it somewhere they cannot reach. That part is handled.</p>
+    </div>
+
+    <!-- branch: link-existing  depth=1  seed=0  orient=vertical  (convergence → sighting-0002) -->
+    <section class="cascade-block cascade-link cascade-converge cp-a cascade-orient-vertical"
+      data-entry="map-thread-a-locations"
+      data-type="link-existing"
+      data-depth="1"
+      data-branch-seed="0"
+      data-orientation="vertical">
+      <h2>documented locations // first recorded sighting</h2>
+      <span class="lean-link"><a href="sighting-0002.html">open sighting-0002</a> <span class="stamp">// parking structure // first documented location</span></span>
+      <p class="stamp">cross-reference</p>
+    </section>
+
+    <footer>
+      <hr />
+      <p><a href="../index.html">return to entrypoint</a></p>
+      <p class="tiny-note">filed: 2026-03-17 // map state: partial // four pins remaining</p>
+    </footer>
+  </main>
+</body>
+</html>
