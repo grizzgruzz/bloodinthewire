@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-branch_publish.py  v4
+branch_publish.py  v5
 =====================
 Branching-publish engine for bloodinthewire.
 
@@ -54,6 +54,20 @@ v4 additions
     passed down to deeper pages so it cannot leak into child/node pages.
   • Existing sanitation rules (metadata strip, consume-on-use) remain in
     force at every level where an image is used.
+
+v5 additions
+------------
+  • SURFACE MEDIA VISIBILITY RULE (hard):
+      If the surface media roll hits (image_web_path non-empty at depth=0),
+        the homepage/surface card MUST visibly show that media.
+      If the roll misses (image_web_path empty), the card shows no media.
+      This rule applies to ALL card types, including link and convergence cards.
+      Previously, make_link_card silently discarded image_web_path — this is
+      now fixed.  Link/convergence cards render a visible thumbnail (.link-thumb)
+      when image_web_path is non-empty.
+  • make_link_card now accepts image_web_path parameter.
+  • branch_resolve passes effective_image to all make_link_card calls.
+  • log_record now records image_web_path for auditability.
 
 USAGE
 -----
@@ -565,11 +579,17 @@ def make_link_card(
     is_node: bool = False,
     orientation: str = 'vertical',
     converges: bool = False,
+    image_web_path: str = '',
 ) -> str:
-    """Lean link card — minimal, just label + hyperlink.
+    """Lean link card — label + hyperlink, with optional visible media thumbnail.
 
     converges=True adds a visual hint that this link points to an existing page
     (content class 'cascade-converge' is added alongside the standard class).
+
+    image_web_path: if non-empty, a visible thumbnail is rendered at the top of
+    the card (surface media roll hit).  If empty, no media is shown (roll miss).
+    This enforces the hard rule: surface media roll result is always visible
+    on the card itself, regardless of card type.
     """
     card_class  = 'cascade-node' if is_node else 'cascade-link'
     if converges:
@@ -577,6 +597,15 @@ def make_link_card(
     link_text   = 'open node' if is_node else 'open entry'
     orient_class = f'cascade-orient-{orientation}'
     branch_comment = 'link-existing' if converges else 'link'
+
+    # Surface media rule: if image provided, render it as a visible thumbnail.
+    thumb_html = ''
+    if image_web_path:
+        thumb_html = (
+            f'      <figure class="link-thumb">'
+            f'<img src="{_html.escape(image_web_path)}" alt="evidence thumbnail"></figure>\n'
+        )
+
     return (
         f'    <!-- branch: {branch_comment}  depth={depth}  seed={roll_seed}  orient={orientation} -->\n'
         f'    <section class="cascade-block {card_class} {cascade_pos} {orient_class}"'
@@ -585,6 +614,7 @@ def make_link_card(
         f' data-depth="{depth}"'
         f' data-branch-seed="{roll_seed}"'
         f' data-orientation="{orientation}">\n'
+        f'{thumb_html}'
         f'      <h2>{_html.escape(title)}</h2>\n'
         f'      <span class="lean-link">'
         f'<a href="{_html.escape(dest_href)}">{link_text}</a>'
@@ -903,6 +933,7 @@ def branch_resolve(
         'posted_date':    posted_date,
         'image_source':   image_source,
         'image_blocked':  (image_source == 'incoming' and depth > 0),
+        'image_web_path': effective_image,   # actual image used on card (empty = no media shown)
     }
 
     if effective_roll == 1:
@@ -979,6 +1010,7 @@ def branch_resolve(
                 is_node=False,
                 orientation=orientation,
                 converges=True,
+                image_web_path=effective_image,   # surface media rule: show if hit
             )
             insert_cascade_card(target_page, card, insertion_index=ins_idx)
             insert_links_entry(
@@ -1054,6 +1086,7 @@ def branch_resolve(
                 is_node=(dest_type == 'node'),
                 orientation=orientation,
                 converges=False,
+                image_web_path=effective_image,   # surface media rule: show if hit
             )
             insert_cascade_card(target_page, card, insertion_index=ins_idx)
             insert_links_entry(target_page, node_href, node_slug, links_note)
@@ -1101,7 +1134,7 @@ def branch_resolve(
 
 def main() -> int:
     p = argparse.ArgumentParser(
-        description='Branching publish engine for bloodinthewire (v4).',
+        description='Branching publish engine for bloodinthewire (v5).',
     )
     p.add_argument('--title',                required=True,  help='Entry title')
     p.add_argument('--teaser',               required=True,  help='One-line teaser')

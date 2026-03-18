@@ -372,6 +372,28 @@ a:hover {
   border-left: 3px solid #2a2a2a;
 }
 
+/* ── LINK CARD THUMBNAIL ──────────────────────────────────────────────── */
+/* Rendered when the surface media roll hits on a link/convergence card.   */
+/* Hard rule: if roll hits, media MUST be visibly shown on the card.       */
+/* If roll misses, .link-thumb is never emitted — no image shown.          */
+
+.link-thumb {
+  margin: 0 0 10px;
+  border: 1px dashed #3a3a3a;
+  padding: 6px;
+  background: #0a0a0a;
+}
+
+.link-thumb img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  object-position: center;
+  border: 1px solid #1f1f1f;
+  filter: contrast(1.05) brightness(.93);
+}
+
 @media (max-width: 580px) {
   .cascade-orient-horizontal {
     flex-direction: column;
