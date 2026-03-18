@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": 1,
-    "note": "Permanent record of branch decisions. Never modify manually — branch_publish.py appends here."
+    "note": "Permanent record of branch decisions. Never modify manually \u2014 branch_publish.py appends here."
   },
   "entries": [
     {
@@ -143,6 +143,26 @@
       "timestamp_utc": "2026-03-18T06:50:00Z",
       "posted_date": "2026-03-17",
       "note": "Hyperlink content migration: stub rewritten in locked voice. Roll=0, no convergence, new junction node spawned."
+    },
+    {
+      "entry_id": "further-evidence-they-said",
+      "title": "further evidence, they said",
+      "depth": 0,
+      "roll": 0,
+      "orientation": "vertical",
+      "insertion_index": 1,
+      "n_existing_at_publish": 6,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-18T07:39:40Z",
+      "posted_date": "2026-03-18",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "action": "link-existing",
+      "dest_page": "fragments/sighting-0003.html",
+      "dest_type": "existing-content",
+      "convergence": true,
+      "convergence_score": 1,
+      "convergence_threshold": 1
     }
   ]
 }
