@@ -1,6 +1,6 @@
 # BLOODINTHEWIRE — Branching Publish Model
 
-Version: v2
+Version: v3
 Status: Canon
 
 ---
@@ -26,17 +26,90 @@ The reader finds it without navigating.
 
 **Roll = 0 → LINK**
 A lean link card is inserted on the current page.
-A new destination page is generated.
-The engine then rolls again for that destination:
+The engine then determines what the link points to (see CONVERGENCE RULE).
 
-  - If the destination roll = 1: the destination becomes a full content
-    page. Following the link takes you there — a dead end in the best sense.
+---
 
-  - If the destination roll = 0: the destination becomes a junction node
-    (an intermediate page that accumulates its own threads). The content
-    then recursively re-rolls from that node.
+## CONVERGENCE RULE (v3 — Hard Rule)
 
-This continues until a 1 is rolled or the depth cap is reached.
+> **A generated link may point to a new contextual page OR an already
+> existing contextual page. If it points to an existing page, BRANCHING
+> ENDS THERE.**
+
+When roll=0, the engine runs this decision in order:
+
+1. **Scan existing pages** (all `fragments/*.html` and content-type
+   `nodes/*.html`) for contextual relevance to the new post.
+
+2. **Score by motif-word overlap**: extract normalized keyword tokens
+   (length ≥ 4 chars, no stop words) from the new post's title+teaser.
+   Compare against each existing page's motif words (derived from filename
+   slug, `<title>`, first `<h2>`, and optional `data-motif` attribute).
+
+3. **Select the best match**: highest intersection score wins. Ties
+   resolve alphabetically (deterministic, not random).
+
+4. **If score ≥ convergence_threshold (default: 1)**:
+   - Insert a lean link card pointing to the existing page.
+   - **NO new page is created. NO recursion continues.**
+   - This is logged as `action: "link-existing"` in branch-log.json.
+
+5. **If no existing page meets the threshold**:
+   - Proceed as v2: roll for destination type (content vs. junction node),
+     create the new page, and recurse as needed.
+
+### Why This Rule Exists
+
+- Prevents runaway node sprawl
+- Keeps links contextually coherent — a sighting post links back to
+  sighting evidence, not a random audio anomaly page
+- Mirrors how real personal-web sites accumulate cross-links over time
+- Makes the site feel like an actual investigative record, not a random
+  tree generator
+
+### Relevance Priority
+
+Matching prefers (in order of weight):
+1. **Shared motif words** — "sighting", "frequency", "map", "street", etc.
+2. **Evidence class** — same type of anomaly (visual / audio / location)
+3. **Tone proximity** — paranoid surveillance vs. cold signal analysis
+4. **Semantic fit** — nearby subject matter even without exact keyword match
+
+The motif-word overlap score captures (1) and (4) mechanically.
+Points (2) and (3) are handled by careful `data-motif` tagging on
+existing pages — add tags that reflect evidence class and tone,
+not just literal words.
+
+### Tuning Convergence
+
+- **`--convergence-threshold N`** (default: 1): raise to require stricter
+  matching before reusing an existing page. Use 2+ when the site has many
+  existing pages and you want to limit accidental convergence.
+- **`--no-convergence`**: disable reuse entirely (for testing / forced
+  growth passes when you deliberately want new structure). Not for
+  normal publishes.
+
+---
+
+## Full Decision Tree
+
+```
+publish(post)
+├── roll = 1  →  INLINE on current page
+│                  (end)
+└── roll = 0
+    ├── relevant existing page found (score ≥ threshold)?
+    │   YES  →  LINK to existing page
+    │              (branching ends — no new pages, no recursion)
+    └── NO   →  roll dest_type
+                ├── dest_type = content  →  create new content page
+                │                           insert LINK card
+                │                           (end — content page is terminal)
+                └── dest_type = node    →  create new junction node
+                                           insert LINK card
+                                           recurse into node
+                                           (continues until roll=1 or depth_cap)
+```
 
 ---
 
@@ -57,7 +130,7 @@ Set a different cap with `--depth-cap N` when calling `branch_publish.py`.
 ```
 bloodinthewire/
   index.html                   ← root page (depth 0)
-  fragments/<slug>.html        ← full fragment pages
+  fragments/<slug>.html        ← full fragment pages (public content)
   nodes/
     node-<slug>-d1-<ts>.html   ← depth-1 junction or content page
     node-<slug>-d2-<ts>.html   ← depth-2 junction or content page
@@ -74,46 +147,38 @@ bloodinthewire/
 **Content node** (`dest_type: content`):
 - Renders the full post content inline.
 - Terminal: not a landing zone for future posts.
+- Eligible for convergence reuse by future posts.
 
 ---
 
 ## Branch Log
 
-Every branching decision is recorded in `project/branch-log.json`:
+Every branching decision is recorded in `project/branch-log.json`.
+
+v3 adds `link-existing` as a valid `action` value:
 
 ```json
 {
-  "entries": [
-    {
-      "entry_id": "entry-0007-something",
-      "title": "entry_0007 :: something",
-      "depth": 0,
-      "roll": 0,
-      "action": "link",
-      "dest_page": "nodes/node-entry-0007-d1-20260318-143200.html",
-      "dest_type": "node",
-      "dest_roll": 0,
-      "target_page": "index.html",
-      "timestamp_utc": "2026-03-18T14:32:00Z",
-      "posted_date": "2026-03-18"
-    },
-    {
-      "entry_id": "entry-0007-something",
-      "title": "entry_0007 :: something",
-      "depth": 1,
-      "roll": 1,
-      "action": "inline",
-      "page": "nodes/node-entry-0007-d1-20260318-143200.html",
-      "target_page": "nodes/node-entry-0007-d1-20260318-143200.html",
-      "timestamp_utc": "2026-03-18T14:32:00Z",
-      "posted_date": "2026-03-18"
-    }
-  ]
+  "entry_id": "entry-0007-something",
+  "title": "entry_0007 :: something",
+  "depth": 0,
+  "roll": 0,
+  "action": "link-existing",
+  "dest_page": "fragments/sighting-0002.html",
+  "dest_type": "existing-content",
+  "convergence": true,
+  "convergence_score": 3,
+  "convergence_threshold": 1,
+  "target_page": "index.html",
+  "orientation": "vertical",
+  "insertion_index": 2,
+  "n_existing_at_publish": 4,
+  "timestamp_utc": "2026-03-19T10:00:00Z",
+  "posted_date": "2026-03-19"
 }
 ```
 
-This log is the ground truth. Pages are never re-rolled — the stored
-decisions determine page structure permanently.
+All other action types (`inline`, `link`) remain as documented in v2.
 
 ---
 
@@ -123,14 +188,18 @@ decisions determine page structure permanently.
 |----------------------------|-----------------------------------------------|
 | `cascade-rich`             | Inline post — full teaser/body visible        |
 | `cascade-link`             | Lean link card — minimal, points elsewhere    |
+| `cascade-converge`         | Lean link card pointing to an existing page   |
 | `cascade-node`             | Lean card pointing to a junction node         |
 | `cp-a` … `cp-g`            | Stagger positions, cycle based on post count  |
 | `cascade-orient-vertical`  | Stacked layout (image below text, default)    |
 | `cascade-orient-horizontal`| Side-by-side layout (image left, text right)  |
 
-Stagger positions are assigned deterministically by counting existing
-cascade blocks on the target page (mod 7). This means the visual rhythm
-is consistent and not re-derived at render time.
+The `cascade-converge` class is added alongside `cascade-link` when the
+link points to an existing page (convergence action). It can be used for
+subtle styling to differentiate "back-link" cards if desired — or ignored
+for a fully uniform appearance.
+
+---
 
 ## v2 Additions: Orientation + Insertion Index
 
@@ -170,6 +239,37 @@ python project/scripts/branch_publish.py \
 The script handles the rest. Review `project/branch-log.json` and the
 modified HTML files before git-adding.
 
+**Convergence controls** (rarely needed):
+
+```bash
+# Raise threshold — only reuse if 2+ shared motif words
+--convergence-threshold 2
+
+# Disable convergence entirely (forced new-branch pass)
+--no-convergence
+```
+
+---
+
+## Tagging Existing Pages for Relevance
+
+Fragment pages and content nodes should carry a `data-motif` attribute on
+their root `<html>` element to aid relevance matching:
+
+```html
+<html lang="en" data-motif="sighting,face,pattern,repeat,street,surveillance">
+```
+
+Motif tags should reflect:
+- **Topic words**: sighting, frequency, map, signal, audio, street, camera
+- **Evidence class**: visual, audio, location, document, digital
+- **Tone words**: paranoid, cold, distant, static, absent, deliberate
+
+The engine automatically extracts motif words from the filename slug,
+`<title>`, and `<h2>` — but `data-motif` lets you add semantic context
+that isn't visible in those sources. Use it for new pages created by
+hand or by the voice pipeline.
+
 ---
 
 ## Targeting a Specific Node
@@ -187,7 +287,9 @@ python project/scripts/branch_publish.py \
 ```
 
 This is valid and intentional — it thickens existing branches rather
-than always growing new ones from root.
+than always growing new ones from root. Convergence check still runs
+at the node level; relevant existing pages reachable from there will
+attract link-existing actions.
 
 ---
 
@@ -211,6 +313,12 @@ not be re-evaluated.
 
 - **Readable first.** A link card is still clean, not broken.
 - **Organic, not random.** Rolled decisions are stored; structure is stable.
+- **Contextually coherent.** Links reuse existing pages only when semantically
+  relevant. The site accumulates connections that make sense.
+- **Convergent by nature.** The web grows but also folds back on itself,
+  like memory. A sighting links to a prior sighting. A signal links to
+  frequency evidence. Patterns emerge.
 - **Automatable.** No human decides inline vs. link — the engine does.
 - **Extendable.** Node pages accumulate threads over time.
 - **No runaway nesting.** Depth cap prevents infinite recursion.
+  Convergence rule prevents runaway node sprawl.
