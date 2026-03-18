@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-branch_publish.py  v7
+branch_publish.py  v8
 =====================
 Branching-publish engine for bloodinthewire.
 
@@ -80,6 +80,22 @@ v6 additions
       - bottom -> insertion_index=n_existing
   • The chosen insertion_zone is stored in branch-log.json for auditability.
   • This replaces the old uniform random insertion_index across all positions.
+
+v8 additions
+------------
+  • ANTI-BACKLINK RULE (hard): when roll=0 (link-out) and convergence is
+    attempted, candidate pages that appear in the current branch's ancestry
+    chain are excluded from selection.  This prevents:
+      - Immediate predecessor loop-backs (A→B→A)
+      - Ping-pong between two nodes (A↔B repeated)
+      - Any ancestor in the current branch being reused as a pivot target
+    Blocked candidates are logged to stderr so the audit trail is clear.
+    The ancestry chain is threaded through recursive calls and maintained
+    newest-first; each level adds its own target_page before passing down.
+  • IMAGE-PATH SANITY CHECK: validate_image_web_path() is called at the
+    top of branch_resolve before any HTML is written.  If the image path
+    does not resolve to an existing file, it is suppressed to empty string
+    so no dead <img> tag is ever rendered.  Suppression is logged to stderr.
 
 v7 additions
 ------------
@@ -509,6 +525,7 @@ def select_relevant_existing_page(
     teaser: str,
     candidates: list,
     threshold: int = 1,
+    ancestry_chain: list | None = None,
 ):
     """
     Select the most contextually relevant existing page for a new post.
@@ -521,13 +538,41 @@ def select_relevant_existing_page(
 
     Ties broken by candidate filename (alphabetical, deterministic — not random).
     Relevance preference: shared motif / tone / evidence class / semantic fit.
+
+    ANTI-BACKLINK RULE (v8):
+    ancestry_chain is a list of normalised page paths (relative to repo root)
+    representing the current branch's ancestry, newest-first.  Any candidate
+    whose path matches an ancestor is excluded from convergence selection.
+    This prevents pivot loops (A→B→A, A→B→C→B, etc.).
+    Blocked candidates are logged to stderr for auditability.
     """
+    ancestry_norm: set = set()
+    if ancestry_chain:
+        for a in ancestry_chain:
+            ancestry_norm.add(str(a).replace('\\', '/').lstrip('/'))
+
     post_words = _motif_words(title + ' ' + teaser)
     if not post_words:
         return None
 
     scored = []
     for page, page_words in candidates:
+        page_norm = str(page).replace('\\', '/')
+        # Strip repo root prefix for comparison
+        try:
+            page_rel = str(page.relative_to(REPO_ROOT)).replace('\\', '/')
+        except ValueError:
+            page_rel = page_norm
+
+        # Anti-backlink guard: skip any candidate that is in the ancestry chain
+        if page_rel in ancestry_norm:
+            print(
+                f'[branch_publish] ANTI-BACKLINK: candidate "{page_rel}" blocked '
+                f'— it is an ancestor of the current branch. Skipping.',
+                file=sys.stderr,
+            )
+            continue
+
         score = len(post_words & page_words)
         if score >= threshold:
             scored.append((score, page.name, page))
@@ -907,6 +952,39 @@ def insert_links_entry(page_path: Path, href: str, label: str, note: str) -> Non
     page_path.write_text(src, encoding='utf-8')
 
 
+# ── Image path sanity check ───────────────────────────────────────────────────
+
+def validate_image_web_path(image_web_path: str) -> str:
+    """
+    Validate that an image_web_path resolves to an existing file.
+
+    If the path is non-empty but does not resolve to an existing file,
+    emits a warning to stderr and returns an empty string so no dead
+    <img> tag is rendered.
+
+    Accepts paths relative to REPO_ROOT (e.g. "project/assets/web/foo.png")
+    or absolute paths.
+
+    Returns the original path unchanged if it resolves, empty string if not.
+    """
+    if not image_web_path:
+        return image_web_path
+
+    candidate = Path(image_web_path)
+    if not candidate.is_absolute():
+        candidate = REPO_ROOT / image_web_path
+
+    if candidate.exists():
+        return image_web_path
+
+    print(
+        f'[branch_publish] IMAGE-GUARD: image path "{image_web_path}" does not '
+        f'resolve to an existing file. Suppressing to avoid dead <img> tag.',
+        file=sys.stderr,
+    )
+    return ''
+
+
 # ── Depth-aware image guard ───────────────────────────────────────────────────
 
 def image_allowed_at_depth(image_web_path: str, image_source: str, depth: int) -> str:
@@ -987,6 +1065,9 @@ def branch_resolve(
     orientation: str | None = None,
     # parent_href for up-navigation in generated pages (v7)
     parent_href: str = '../index.html',
+    # ancestry_chain: list of normalised page paths (relative to repo root),
+    # newest-first.  Used by anti-backlink guard (v8) to prevent pivot loops.
+    ancestry_chain: list | None = None,
 ) -> None:
     """
     Recursively resolve branch decisions and write pages.
@@ -1022,6 +1103,19 @@ def branch_resolve(
       parent_href is threaded into generated node/content pages so up-links
       always point to the actual parent page (not just index.html).
     """
+    # Initialise ancestry chain (v8 anti-backlink guard)
+    if ancestry_chain is None:
+        ancestry_chain = []
+    # Record this target_page in ancestry (normalised, relative to repo root)
+    try:
+        current_page_rel = str(target_page.relative_to(REPO_ROOT)).replace('\\', '/')
+    except ValueError:
+        current_page_rel = str(target_page).replace('\\', '/')
+    updated_ancestry = [current_page_rel] + ancestry_chain
+
+    # Validate image path — suppress dead refs before any HTML is written (v8)
+    image_web_path = validate_image_web_path(image_web_path)
+
     # Apply depth-based media source guard before any HTML is written
     effective_image = image_allowed_at_depth(image_web_path, image_source, depth)
     # At cap → force inline
@@ -1128,7 +1222,9 @@ def branch_resolve(
                 REPO_ROOT, exclude_norm
             )
             convergence_result = select_relevant_existing_page(
-                title, teaser, existing_candidates, threshold=convergence_threshold
+                title, teaser, existing_candidates,
+                threshold=convergence_threshold,
+                ancestry_chain=updated_ancestry,   # v8: anti-backlink guard
             )
 
         # Record gate result for auditability
@@ -1284,6 +1380,7 @@ def branch_resolve(
                     is_root=False,
                     orientation=orientation, # propagate from root roll
                     parent_href=recursive_parent_href,  # v7: up-nav for children of this node
+                    ancestry_chain=updated_ancestry,    # v8: anti-backlink guard
                 )
 
     log_entry(branch_log, log_record)
@@ -1399,7 +1496,7 @@ def main() -> int:
     img_blk = last.get('image_blocked', False)
 
     print()
-    print('branch_publish v7 complete')
+    print('branch_publish v8 complete')
     print('=' * 56)
     print(f'  entry:                {args.title}')
     print(f'  depth_cap:            {args.depth_cap}')
