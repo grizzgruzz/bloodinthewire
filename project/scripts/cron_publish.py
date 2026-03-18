@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-cron_publish.py  v1
+cron_publish.py  v2
 ===================
 Cron orchestration wrapper for the Blood in the Wire automated publish pipeline.
 
 PURPOSE
 -------
 This script is the entry point for unattended / scheduled runs.  It wraps the
-full pipeline (asset selection → voice-request build → post generation →
+full pipeline (asset selection → voice-request build → LLM draft generation →
 branch publish) with two top-level probabilistic gates and produces a compact,
 auditable trace line for each execution.
 
@@ -21,10 +21,10 @@ GATES (rolled in order)
 2. MEDIA GATE (depth=0 only) — should the surface post include an image?
    Default: 70% chance of including media.
    Override: --media-probability 0.0..1.0
-   If gate says YES: call select_asset.py (surface level) to pick an asset.
-     - Incoming/ is preferred over library/ (hard rule, enforced by select_asset.py).
-     - If no assets exist in either pool, degrades gracefully to text-only.
-   If gate says NO: surface post is published without media (text-only card).
+   Note: in AUTO-GENERATE mode (default), generate_draft.py always selects
+   an asset (consuming it from incoming/) so the narrative is paired with
+   the note context.  The media gate controls whether that image is SHOWN
+   in the published card.  The asset is always consumed when run gate passes.
 
 TRACE OUTPUT
 ------------
@@ -32,42 +32,47 @@ Each run emits exactly one compact trace line to stdout (plus the normal
 branch_publish summary for publish runs).  The trace line is suitable for
 cron log capture and post-hoc auditing:
 
-  SKIP  ts=2026-03-18T14:00:00Z  run_gate_roll=0.3241  p_run=0.50
-  PUB   ts=2026-03-18T14:00:00Z  run_gate_roll=0.7812  p_run=0.50  media=yes  img_src=incoming  img=<path>
-  PUB   ts=2026-03-18T14:00:00Z  run_gate_roll=0.6511  p_run=0.50  media=no
+  SKIP       ts=... run_gate_roll=0.3241 p_run=0.50
+  SKIP_RPT   ts=... reason=anti_repeat_guard  title=<stale title>
+  PUB        ts=... media=yes  img_src=incoming  img=<path>  title=<title>
+  PUB        ts=... media=no   title=<title>
 
 Trace lines are also appended to project/cron-trace.log for permanent record.
 
 MODES
 -----
-This script can operate in two modes:
+This script operates in three modes:
 
-  FULL mode (default): runs the entire automated pipeline.
-    Requires that select_asset.py (asset selection), build_voice_request.py,
-    and generate_post.py are available and can run autonomously.
-    NOTE: The generate_post.py step requires pre-existing voice draft output
-    from wirevoice-core.  In a fully automated context this step would call
-    a wirevoice-core API / subprocess.  In the current workflow, voice
-    generation is a manual human-in-the-loop step.
+  AUTO-GENERATE mode (default): full autonomous pipeline.
+    1. Calls generate_draft.py, which:
+       - Calls select_asset.py (incoming/ preferred) to consume next asset.
+       - Calls build_voice_request.py to assemble the Gemini prompt (includes
+         VOICE_BIBLE, GENERATOR_PROMPT, and paired note sidecar).
+       - Sends prompt to Google Gemini API.
+       - Validates response against GENERATOR_PROMPT strict format.
+       - Runs anti-repeat guard against recent branch-log entries.
+       - Writes fresh draft to project/content/drafts/voice-draft-current.txt.
+    2. Rolls media gate to decide whether to show image in published card.
+    3. Calls branch_publish.py with fresh title + (image or text-only).
+    This mode NEVER reuses a stale voice-draft-current.txt.
 
-  ASSEMBLE mode (--assemble-only): runs only the asset selection and
-    branch publish steps, using an already-existing voice draft file
-    provided via --voice-draft-file.  Suitable for wiring into a cron
-    that calls out to an LLM API externally and passes the result back.
+  ASSEMBLE mode (--assemble-only): skip narrative generation; use an
+    already-existing voice draft file provided via --voice-draft-file.
+    Suitable for manual/human-in-the-loop workflows or fallback.
+    Note: this mode DOES reuse a static draft file — use only when
+    explicitly providing a fresh draft externally.
 
   DRY RUN (--dry-run): gate rolls happen and are traced, but NO files are
     written (no asset consumed, no post published, no HTML modified).
 
 TYPICAL CRON USAGE
 ------------------
-  # Run every 6 hours; 50% run gate; publish with --assemble-only if a draft exists
+  # Auto-generate mode (recommended): fresh narrative every run
   0 */6 * * * cd /home/gruzz/bloodinthewire && \
-      python3 project/scripts/cron_publish.py \
-          --assemble-only \
-          --voice-draft-file project/content/drafts/voice-draft-current.txt \
+      python3 project/scripts/cron_publish.py --auto-push \
           >> project/cron-trace.log 2>&1
 
-  # Always run (testing/forced)
+  # Always run (testing/forced dry-run)
   python3 project/scripts/cron_publish.py --run-probability 1.0 --dry-run
 
 USAGE
@@ -286,50 +291,41 @@ def main() -> int:
     else:
         media_gate = media_roll < args.media_probability
 
-    # Select asset if media gate hit
+    # ── RESOLVE VOICE DRAFT + ASSET ───────────────────────────────────────────
     image_web_path = ''
     image_source   = ''
     media_status   = 'no'
+    title  = args.title
+    teaser = args.teaser
 
-    if media_gate:
-        # Try to get an asset.  Prefer incoming/ (handled by select_asset.py --level surface).
-        # If no assets available at all, degrade to text-only gracefully.
-        has_assets = _has_incoming_assets() or _has_library_assets()
-
-        if not has_assets:
-            print('[cron_publish] INFO: media gate hit but no assets available — degrading to text-only.',
-                  file=sys.stderr)
-            media_gate = False
-            media_status = 'no (no assets)'
-        elif args.dry_run:
-            # In dry-run, just note what would happen
-            img_src_label = 'incoming' if _has_incoming_assets() else 'library'
-            image_source  = img_src_label
-            media_status  = f'yes (dry-run, would use {img_src_label})'
-        else:
-            # Run select_asset.py --level surface
-            result = _run_py([
-                str(SCRIPT_DIR / 'select_asset.py'),
-                '--level', 'surface',
-            ])
-            if result.returncode != 0:
-                print(f'[cron_publish] WARNING: select_asset.py failed (rc={result.returncode}).',
-                      file=sys.stderr)
-                print(result.stderr, file=sys.stderr)
-                print('[cron_publish] INFO: degrading to text-only.', file=sys.stderr)
-                media_status = 'no (select_asset failed)'
-            else:
-                image_web_path = result.stdout.strip()
-                # Determine source from select_asset.py stderr hints
-                # select_asset logs SOURCE=incoming or SOURCE=library to stderr
-                if 'SOURCE=incoming' in result.stderr:
-                    image_source = 'incoming'
-                else:
-                    image_source = 'library'
-                media_status = f'yes  img_src={image_source}  img={Path(image_web_path).name}'
-
-    # ── RESOLVE VOICE DRAFT ───────────────────────────────────────────────────
     if args.assemble_only or args.voice_draft_file:
+        # ── ASSEMBLE MODE: use existing static draft file ─────────────────────
+        # NOTE: This mode reuses a static draft. Use only when providing a
+        # fresh draft externally. For autonomous cron, use AUTO-GENERATE mode.
+
+        # Asset selection (same as before — separate from draft)
+        if media_gate:
+            has_assets = _has_incoming_assets() or _has_library_assets()
+            if not has_assets:
+                print('[cron_publish] INFO: media gate hit but no assets — degrading to text-only.',
+                      file=sys.stderr)
+                media_gate = False
+                media_status = 'no (no assets)'
+            elif args.dry_run:
+                img_src_label = 'incoming' if _has_incoming_assets() else 'library'
+                image_source  = img_src_label
+                media_status  = f'yes (dry-run, would use {img_src_label})'
+            else:
+                result = _run_py([str(SCRIPT_DIR / 'select_asset.py'), '--level', 'surface'])
+                if result.returncode != 0:
+                    print(f'[cron_publish] WARNING: select_asset.py failed — text-only.',
+                          file=sys.stderr)
+                    media_status = 'no (select_asset failed)'
+                else:
+                    image_web_path = result.stdout.strip()
+                    image_source = 'incoming' if 'SOURCE=incoming' in result.stderr else 'library'
+                    media_status = f'yes  img_src={image_source}  img={Path(image_web_path).name}'
+
         draft_file = args.voice_draft_file or str(VOICE_DRAFT_CURRENT)
         draft_path = Path(draft_file)
         if not draft_path.is_absolute():
@@ -346,9 +342,6 @@ def main() -> int:
             append_trace(trace)
             return 1
 
-        # Parse title/teaser from draft if not provided on command line
-        title  = args.title
-        teaser = args.teaser
         if not title or not teaser:
             try:
                 import re as _re
@@ -358,7 +351,6 @@ def main() -> int:
                     if m:
                         title = m.group(1).strip()
                 if not teaser:
-                    # Use EVIDENCE_LINE as teaser if no teaser given
                     m = _re.search(r'^EVIDENCE_LINE:\s*(.+)$', text, _re.MULTILINE)
                     if m:
                         teaser = m.group(1).strip()
@@ -376,29 +368,141 @@ def main() -> int:
             return 1
 
         if not teaser:
-            teaser = title  # fallback: use title as teaser
+            teaser = title
 
     else:
-        # Full mode: voice generation is a manual/external step.
-        # In current workflow, wirevoice-core is human-in-the-loop.
-        # This path prints a clear message explaining next steps.
-        trace = (
-            f'SKIP  ts={now}'
-            f'  run_gate_roll={run_roll:.4f}  p_run={args.run_probability:.2f}'
-            f'  reason=no_voice_draft_and_not_assemble_only'
-            f'  hint=use_--voice-draft-file_or_--assemble-only'
-        )
-        print(trace)
-        append_trace(trace)
-        print(
-            '\n[cron_publish] INFO: Full automated pipeline requires a pre-generated voice draft.\n'
-            '  Use --assemble-only --voice-draft-file <path> to publish from an existing draft.\n'
-            '  Or set VOICE_DRAFT_CURRENT in project/content/drafts/ for default file path.',
-            file=sys.stderr,
-        )
-        return 0
+        # ── AUTO-GENERATE MODE: call generate_draft.py for fresh narrative ────
+        # generate_draft.py handles:
+        #   1. select_asset.py (asset selection + note pairing)
+        #   2. build_voice_request.py (prompt assembly)
+        #   3. Gemini API call (narrative generation)
+        #   4. Anti-repeat guard (title similarity vs recent entries)
+        #   5. Writes fresh voice-draft-current.txt
 
-    # ── DRY RUN SUMMARY ───────────────────────────────────────────────────────
+        # Determine if we have assets to generate with
+        has_assets = _has_incoming_assets() or _has_library_assets()
+
+        if args.dry_run:
+            img_src_label = 'incoming' if _has_incoming_assets() else 'library'
+            media_status = (
+                f'yes (dry-run, would use {img_src_label})'
+                if (media_gate and has_assets)
+                else 'no (dry-run)'
+            )
+            trace = (
+                f'DRY   ts={now}'
+                f'  run_gate_roll={run_roll:.4f}  p_run={args.run_probability:.2f}'
+                f'  media_gate_roll={media_roll:.4f}  p_media={args.media_probability:.2f}'
+                f'  media={media_status}'
+                f'  mode=auto-generate'
+                f'  depth_cap={args.depth_cap}'
+            )
+            print(trace)
+            append_trace(trace)
+            print('[cron_publish] DRY RUN complete — no files modified.', file=sys.stderr)
+            return 0
+
+        if not has_assets:
+            print('[cron_publish] INFO: no assets in incoming/ or library/ — cannot auto-generate.',
+                  file=sys.stderr)
+            trace = (
+                f'SKIP  ts={now}'
+                f'  run_gate_roll={run_roll:.4f}  p_run={args.run_probability:.2f}'
+                f'  reason=no_assets_for_auto_generate'
+            )
+            print(trace)
+            append_trace(trace)
+            return 0
+
+        print('[cron_publish] AUTO-GENERATE: calling generate_draft.py ...', file=sys.stderr)
+        gd_result = _run_py([str(SCRIPT_DIR / 'generate_draft.py')])
+
+        if gd_result.returncode == 2:
+            # SKIP_REPEAT: anti-repeat guard triggered
+            # Extract title from stdout if available
+            skip_title = ''
+            for line in gd_result.stdout.splitlines():
+                if line.startswith('DRAFT_TITLE='):
+                    skip_title = line.split('=', 1)[1].strip()
+            trace = (
+                f'SKIP_RPT  ts={now}'
+                f'  run_gate_roll={run_roll:.4f}  p_run={args.run_probability:.2f}'
+                f'  reason=anti_repeat_guard'
+                f'  title={skip_title!r}'
+            )
+            print(trace)
+            append_trace(trace)
+            print('[cron_publish] SKIP: anti-repeat guard prevented stale concept reuse.',
+                  file=sys.stderr)
+            return 0
+
+        if gd_result.returncode != 0:
+            trace = (
+                f'ERROR ts={now}'
+                f'  run_gate_roll={run_roll:.4f}  p_run={args.run_probability:.2f}'
+                f'  err=generate_draft_failed_rc={gd_result.returncode}'
+            )
+            print(trace, file=sys.stderr)
+            append_trace(trace)
+            print(f'[cron_publish] generate_draft.py stderr:\n{gd_result.stderr[:500]}',
+                  file=sys.stderr)
+            return 1
+
+        # Parse generate_draft.py stdout for title, evidence, image path
+        draft_image_web_path = ''
+        for line in gd_result.stdout.splitlines():
+            if line.startswith('DRAFT_TITLE='):
+                if not title:
+                    title = line.split('=', 1)[1].strip()
+            elif line.startswith('DRAFT_EVIDENCE='):
+                if not teaser:
+                    teaser = line.split('=', 1)[1].strip()
+            elif line.startswith('IMAGE_WEB_PATH='):
+                draft_image_web_path = line.split('=', 1)[1].strip()
+
+        # Determine image source from generate_draft.py stderr
+        if 'SOURCE=incoming' in gd_result.stderr:
+            image_source = 'incoming'
+        else:
+            image_source = 'library'
+
+        # Apply media gate: if gate HIT, use the image generate_draft selected
+        # If gate MISS, publish text-only (asset was still consumed for note pairing)
+        if media_gate and draft_image_web_path:
+            image_web_path = draft_image_web_path
+            media_status = f'yes  img_src={image_source}  img={Path(image_web_path).name}'
+        else:
+            media_status = f'no (media_gate={media_gate})'
+
+        if not title:
+            # Fallback: try to read from the written draft file
+            try:
+                import re as _re
+                text = VOICE_DRAFT_CURRENT.read_text(encoding='utf-8')
+                m = _re.search(r'^TITLE:\s*(.+)$', text, _re.MULTILINE)
+                if m:
+                    title = m.group(1).strip()
+                if not teaser:
+                    m = _re.search(r'^EVIDENCE_LINE:\s*(.+)$', text, _re.MULTILINE)
+                    if m:
+                        teaser = m.group(1).strip()
+            except Exception:
+                pass
+
+        if not title:
+            trace = (
+                f'ERROR ts={now}'
+                f'  run_gate_roll={run_roll:.4f}'
+                f'  err=no_title_after_generate_draft'
+            )
+            print(trace, file=sys.stderr)
+            append_trace(trace)
+            return 1
+
+        if not teaser:
+            teaser = title
+
+    # ── DRY RUN SUMMARY (assemble mode only reaches here with --dry-run) ─────
     if args.dry_run:
         trace = (
             f'DRY   ts={now}'
@@ -410,7 +514,7 @@ def main() -> int:
         )
         print(trace)
         append_trace(trace)
-        print(f'\n[cron_publish] DRY RUN complete — no files modified.\n', file=sys.stderr)
+        print('[cron_publish] DRY RUN complete — no files modified.', file=sys.stderr)
         return 0
 
     # ── BRANCH PUBLISH ────────────────────────────────────────────────────────

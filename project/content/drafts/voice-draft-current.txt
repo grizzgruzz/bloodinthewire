@@ -1,11 +1,11 @@
-TITLE: Arrow Keeps Pointing Left
-TIMESTAMP: 21:06
+TITLE: Faked Bone
+TIMESTAMP: OMIT
 BODY:
-I pulled into the lot to prove it was ordinary, pay, park, leave, that is all, and the round PUBLIC PARKING sign was lit so hard it looked like an eye, white face, red P, black ring, arrow left, always left. I stood there long reading it like a warning label. I know a sign is a sign, I get that, but it was pointed at the side street where my neighbor was walking and pretending to check his phone even though the screen was black.
+The xray they sent me, the one in the plain brown envelope with no return address, it's faked. I know my own bones I know what was there and what wasn't there this one they sent it's a perfect forgery no not perfect because I see the edge I see the way the light catches the layer they put on it it’s like a film almost you wouldn't notice unless you were really looking for it unless you knew what you were looking for which I do. They want me to believe there's a fracture there. A clean break right at the distal end. But it's not real. It's a fabrication.
 
-I saw the man in the store two blocks before this, same jacket as yesterday, same shoulder dip when he turns away, and now he is in a parking structure at night when he does not drive, he never drives, he walks and disappears behind columns. People will say coincidence, repeat traffic, normal foot patterns, but normal does not line up this clean three times in one evening, not with the utility guy parked across from the exit acting like he is waiting for a hand signal.
+It's another one of their messages, just like the weird fliers about services I never asked for that show up, or the subtle changes in the landscaping on the street corner that only *I* notice. This is a very specific message this time. It's about me, my body. They want me to question myself. They want me to think I'm damaged in a way I'm not. It's a signal, a very deliberate signal designed to throw me off, to make me doubt what I know about myself, what I know about my own insides. But I don't doubt. I know this part of me was solid.
 
-I circled level two because I did not want to give them move, and yes that sounds dramatic, no, it is practical, because if I leave when expected I become very easy to place on a map.
+I remember the last time I saw an xray for real reasons. It was for the pet. After the accident. They said it was just a fall from the couch, but it wasn't. Nothing is just a fall. And now this, this faked image of *my* insides, delivered to my mailbox, like it's normal correspondence. It’s too specific, it means something. It's a threat. Or a promise. They want me to believe their version of reality, their version of my own body, but I can see the seams. I can see the wire. It's all connected, it always is.
 
-EVIDENCE_LINE: Frame note: lit PUBLIC PARKING disc, red P arrow left, level-2 sightline, 21:06.
-TAGS: wrong_people,directed_patterns,parking,night
+EVIDENCE_LINE: /home/gruzz/bloodinthewire/project/assets/web/3e581479-dab0-47a5-abc8-8dcb0b90f1eb_20260318-162017.png FAKED XRAY
+TAGS: faked evidence, directed patterns, surveillance, memory, retribution
