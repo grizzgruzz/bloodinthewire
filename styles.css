@@ -128,61 +128,66 @@ a:hover {
 
 /* wanted block — cascade-block variant, preserves poster aesthetic */
 .cascade-wanted {
-  background: #d6cdbb;
-  color: #1a1512;
-  border: 3px double #665748 !important;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.22);
+  background: rgba(20, 16, 12, .88);
+  color: var(--fg);
+  border: 1px dashed #4c4032 !important;
+  box-shadow: 0 0 0 1px rgba(80,40,20,.18);
 }
 
 .cascade-wanted h3 {
   margin: 0 0 8px;
-  color: #2b160f;
-  text-align: center;
-  font-size: 1.4rem;
-  letter-spacing: 1px;
+  color: #efe4d1;
+  text-align: left;
+  font-size: 1.08rem;
+  letter-spacing: .3px;
+  text-transform: none;
 }
 
 .wanted-figure {
   margin: 0 0 10px;
   padding: 6px;
-  border: 1px solid #72624d;
-  background: #b8aa95;
+  border: 1px solid #4b4034;
+  background: #0a0a0a;
 }
 
 .wanted-figure img {
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid #534637;
+  border: 1px solid #2b241d;
   filter: contrast(1.05) saturate(.85);
 }
 
+.wanted-copy,
 .wanted-notes {
   margin: 0;
-  padding-left: 18px;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: .93rem;
-  line-height: 1.35;
+  font-family: "Courier New", Courier, monospace;
+  font-size: .92rem;
+  line-height: 1.45;
+  color: #ddd8c9;
 }
 
+.wanted-copy p,
+.wanted-notes p,
 .wanted-notes li {
-  margin: 0 0 8px;
+  margin: 0 0 9px;
 }
 
 .dossier-block {
   margin-top: 12px;
   padding-top: 8px;
-  border-top: 1px solid #7e6f5c;
-  font-family: Arial, Helvetica, sans-serif;
+  border-top: 1px dashed #4c4032;
+  font-family: "Courier New", Courier, monospace;
   font-size: .9rem;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .dossier-block h4 {
   margin: 8px 0 6px;
-  color: #2c1b15;
-  font-size: .96rem;
-  letter-spacing: .5px;
+  color: #efe4d1;
+  font-size: .92rem;
+  letter-spacing: .3px;
+  text-transform: none;
 }
 
 .dossier-block p {
