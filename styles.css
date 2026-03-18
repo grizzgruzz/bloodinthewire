@@ -517,3 +517,148 @@ marquee {
 
 .nav-up::before  { content: ''; }
 .nav-down::before { content: ''; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COLLAGE LAYOUT — full-width staggered grid on large screens
+   Mobile stays: linear readable stack (< 900px — no changes).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Expand container edge-to-edge on desktop ─────────────────────────── */
+@media (min-width: 900px) {
+  .container {
+    max-width: none;
+    width: calc(100% - 28px);
+    margin: 18px 14px 40px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .container {
+    margin: 18px 20px 40px;
+    width: calc(100% - 40px);
+  }
+}
+
+/* ── The collage grid wrapper ─────────────────────────────────────────── */
+.cascade-feed {
+  /* Mobile: plain block flow */
+  display: block;
+}
+
+@media (min-width: 900px) {
+  .cascade-feed {
+    display: grid;
+    /* 12 equal-width columns; content spreads the full container */
+    grid-template-columns: repeat(12, 1fr);
+    column-gap: 14px;
+    row-gap: 0;             /* vertical spacing handled per-card via margin */
+    align-items: start;     /* cards don't stretch to fill row — each is own height */
+  }
+
+  /* By default every cascade-block takes full 12 cols (fallback / override by cp-*) */
+  .cascade-feed .cascade-block {
+    grid-column: span 12;
+    margin-left: 0;
+    width: auto;           /* let grid control sizing, not legacy % widths */
+  }
+
+  /* ── cp-* → grid span + stagger offset ─────────────────────────────── */
+  /* Spans are deliberately uneven (5,7,8,6,9,4,10) to create imperfect fill.
+     margin-top stagger offsets give the 'cards trying to fit but off-beat' feel.
+     No two adjacent classes should look the same.                          */
+
+  .cascade-feed .cp-a {
+    grid-column: span 7;
+    margin-top: 0;
+    margin-left: 0;
+    width: auto;
+  }
+
+  .cascade-feed .cp-b {
+    grid-column: span 5;
+    margin-top: 22px;
+    margin-left: 0;
+    width: auto;
+  }
+
+  .cascade-feed .cp-c {
+    grid-column: span 8;
+    margin-top: 10px;
+    margin-left: 0;
+    width: auto;
+  }
+
+  .cascade-feed .cp-d {
+    grid-column: span 6;
+    margin-top: 30px;
+    margin-left: 0;
+    width: auto;
+  }
+
+  .cascade-feed .cp-e {
+    grid-column: span 9;
+    margin-top: 6px;
+    margin-left: 0;
+    width: auto;
+  }
+
+  .cascade-feed .cp-f {
+    grid-column: span 4;
+    margin-top: 18px;
+    margin-left: 0;
+    width: auto;
+  }
+
+  .cascade-feed .cp-g {
+    grid-column: span 10;
+    margin-top: 14px;
+    margin-left: 0;
+    width: auto;
+  }
+
+  /* ── Horizontal orientation cards need extra minimum width on grid ──── */
+  .cascade-feed .cascade-orient-horizontal {
+    min-width: 0;   /* allow flex children to shrink inside grid cell */
+  }
+
+  /* ── Wanted + companion pinned sections: span more for visual weight ── */
+  .cascade-feed .cascade-wanted {
+    grid-column: span 5;
+    margin-top: 8px;
+    width: auto;
+    margin-left: 0;
+  }
+
+  /* companion render: wide card to anchor the collage */
+  .cascade-feed [data-entry="companion-render"] {
+    grid-column: span 7;
+    margin-top: 20px;
+  }
+}
+
+/* ── Ultra-wide (>1600px): tighten column gap for denser feel ─────────── */
+@media (min-width: 1600px) {
+  .cascade-feed {
+    column-gap: 18px;
+  }
+}
+
+/* ── Mobile: strip grid artefacts, restore original stagger classes ────── */
+@media (max-width: 899px) {
+  .cascade-feed .cascade-block,
+  .cascade-feed .cp-a,
+  .cascade-feed .cp-b,
+  .cascade-feed .cp-c,
+  .cascade-feed .cp-d,
+  .cascade-feed .cp-e,
+  .cascade-feed .cp-f,
+  .cascade-feed .cp-g {
+    /* restore original margin/width behaviour for mobile */
+    grid-column: unset;
+    margin-top: 0;
+  }
+  /* restore legacy cp-* offsets on mobile for slight visual variety */
+  .cascade-feed .cp-b { margin-left: 26px; width: calc(100% - 30px); }
+  .cascade-feed .cp-d { margin-left: 24px; width: calc(100% - 28px); }
+  .cascade-feed .cp-g { margin-left: 18px; width: calc(100% - 22px); }
+}
