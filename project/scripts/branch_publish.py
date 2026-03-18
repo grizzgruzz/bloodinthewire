@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-branch_publish.py  v3
+branch_publish.py  v4
 =====================
 Branching-publish engine for bloodinthewire.
 
@@ -43,6 +43,18 @@ v3 additions
   • --convergence-threshold option (default 1: any shared keyword qualifies).
   • --no-convergence flag to disable for testing/forced-growth passes.
 
+v4 additions
+------------
+  • DEPTH-AWARE MEDIA SOURCE RULE (hard):
+      depth=0 (surface / front-page):  may use assets from incoming/ when
+        the media roll allows an image.  incoming/ retains highest priority.
+      depth>0 (lower-level / linked / recursive pages):  incoming/ is
+        NEVER used.  Only vetted library assets may appear.
+  • image_web_path sourced from incoming/ is explicitly CLEARED when
+    passed down to deeper pages so it cannot leak into child/node pages.
+  • Existing sanitation rules (metadata strip, consume-on-use) remain in
+    force at every level where an image is used.
+
 USAGE
 -----
   python branch_publish.py \\
@@ -53,6 +65,7 @@ USAGE
       [--timestamp "HH:MM"] \\
       [--body-file path/to/body.html] \\
       [--image-web-path project/assets/web/img.jpg] \\
+      [--image-source incoming|library]     # tracks origin; 'incoming' blocked below depth=0
       [--target-page index.html]            # defaults to index.html
       [--depth-cap 5]                       # max branching depth (default 5)
       [--convergence-threshold 1]           # min shared keywords to reuse (default 1)
@@ -758,6 +771,39 @@ def insert_links_entry(page_path: Path, href: str, label: str, note: str) -> Non
     page_path.write_text(src, encoding='utf-8')
 
 
+# ── Depth-aware image guard ───────────────────────────────────────────────────
+
+def image_allowed_at_depth(image_web_path: str, image_source: str, depth: int) -> str:
+    """
+    Enforce the hard depth-based media source rule:
+
+    depth == 0 (surface / front-page):
+        Any image is allowed, including those sourced from incoming/.
+
+    depth > 0 (lower-level / linked / recursive pages):
+        incoming/-sourced images are HARD-BLOCKED.
+        If image_source == 'incoming', the image is suppressed (empty string
+        returned) and a warning is logged to stderr.
+        Only library-sourced images (or no image) may appear here.
+
+    Returns the image path to use (may be empty string if blocked).
+    """
+    if depth == 0:
+        return image_web_path  # surface level: all sources permitted
+
+    if image_source == "incoming" and image_web_path:
+        import sys
+        print(
+            f"[branch_publish] GUARD: depth={depth} — incoming/-sourced image "
+            f"'{image_web_path}' is BLOCKED at lower level. "
+            "Only library assets may appear on linked/recursive pages.",
+            file=sys.stderr,
+        )
+        return ""  # suppress incoming image on deep pages
+
+    return image_web_path  # library source or no image: allowed at all depths
+
+
 # ── Core recursive branching logic ────────────────────────────────────────────
 
 def roll(force: int | None = None) -> int:
@@ -788,6 +834,7 @@ def branch_resolve(
     timestamp: str,
     body_html: str,
     image_web_path: str,
+    image_source: str,
     target_page: Path,
     depth: int,
     depth_cap: int,
@@ -819,7 +866,14 @@ def branch_resolve(
           recurse into destination (original v2 behaviour).
 
     All rolls are stored in branch_log for reproducibility.
+
+    DEPTH-AWARE IMAGE RULE (v4):
+      image_web_path from incoming/ is only used at depth=0 (surface/front-page).
+      At depth>0, if image_source=='incoming', the image is suppressed and a
+      warning is emitted.  Only library assets may appear on deeper pages.
     """
+    # Apply depth-based media source guard before any HTML is written
+    effective_image = image_allowed_at_depth(image_web_path, image_source, depth)
     # At cap → force inline
     effective_roll = 1 if depth >= depth_cap else roll(force_roll if is_root else None)
 
@@ -847,6 +901,8 @@ def branch_resolve(
         'target_page':    str(target_page.relative_to(REPO_ROOT)),
         'timestamp_utc':  time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
         'posted_date':    posted_date,
+        'image_source':   image_source,
+        'image_blocked':  (image_source == 'incoming' and depth > 0),
     }
 
     if effective_roll == 1:
@@ -859,7 +915,7 @@ def branch_resolve(
             posted_date=posted_date,
             timestamp=timestamp,
             body_html=body_html,
-            image_web_path=image_web_path,
+            image_web_path=effective_image,   # v4: depth-guarded
             cascade_pos=cascade_pos,
             depth=depth,
             roll_seed=effective_roll,
@@ -955,13 +1011,15 @@ def branch_resolve(
 
             if dest_roll == 1 or deeper_depth >= depth_cap:
                 # Destination is a fresh content page
+                # v4: deeper pages must never receive incoming/-sourced images
+                deeper_image = image_allowed_at_depth(image_web_path, image_source, deeper_depth)
                 node_html = make_content_page(
                     node_slug=node_slug,
                     entry_title=title,
                     teaser=teaser,
                     fragment_href=fragment_href,
                     body_html=body_html,
-                    image_web_path=image_web_path,
+                    image_web_path=deeper_image,   # v4: depth-guarded
                     timestamp=timestamp,
                     posted_date=posted_date,
                     depth=deeper_depth,
@@ -1019,7 +1077,8 @@ def branch_resolve(
                     posted_date=posted_date,
                     timestamp=timestamp,
                     body_html=body_html,
-                    image_web_path=image_web_path,
+                    image_web_path=image_web_path,  # original path passed; guard re-applied inside
+                    image_source=image_source,       # v4: propagate source label for guard
                     target_page=node_path,
                     depth=deeper_depth,
                     depth_cap=depth_cap,
@@ -1042,7 +1101,7 @@ def branch_resolve(
 
 def main() -> int:
     p = argparse.ArgumentParser(
-        description='Branching publish engine for bloodinthewire (v3).',
+        description='Branching publish engine for bloodinthewire (v4).',
     )
     p.add_argument('--title',                required=True,  help='Entry title')
     p.add_argument('--teaser',               required=True,  help='One-line teaser')
@@ -1051,6 +1110,15 @@ def main() -> int:
     p.add_argument('--timestamp',            default='',     help='HH:MM timestamp or omit')
     p.add_argument('--body-file',            default='',     help='Path to HTML body fragment file')
     p.add_argument('--image-web-path',       default='',     help='Relative path to web-ready image')
+    p.add_argument('--image-source',         default='library',
+                                             choices=['incoming', 'library', ''],
+                                             help=(
+                                                 'Origin of the image asset. '
+                                                 '"incoming" = user drop (highest priority at surface, '
+                                                 'BLOCKED on all deeper pages). '
+                                                 '"library" = vetted library asset (allowed at all depths). '
+                                                 'Default: library.'
+                                             ))
     p.add_argument('--target-page',          default='',     help='Target page (default: index.html)')
     p.add_argument('--depth-cap',            type=int, default=DEPTH_CAP_DEFAULT)
     p.add_argument('--convergence-threshold', type=int, default=CONVERGENCE_THRESHOLD_DEFAULT,
@@ -1093,6 +1161,9 @@ def main() -> int:
         else:
             print(f'WARNING: body file not found: {bp}', file=sys.stderr)
 
+    # Normalise image_source: treat empty as 'library'
+    image_source = args.image_source if args.image_source else 'library'
+
     entry_id   = make_entry_id(args.title)
     branch_log = load_branch_log()
     summary: list = []
@@ -1106,6 +1177,7 @@ def main() -> int:
         timestamp=args.timestamp,
         body_html=body_html,
         image_web_path=args.image_web_path,
+        image_source=image_source,           # v4: track origin for depth guard
         target_page=target_page,
         depth=0,
         depth_cap=args.depth_cap,
@@ -1129,14 +1201,17 @@ def main() -> int:
     ins_idx = last.get('insertion_index', 'unknown')
     n_exist = last.get('n_existing_at_publish', 'unknown')
     action  = last.get('action', 'unknown')
+    img_src = last.get('image_source', 'unknown')
+    img_blk = last.get('image_blocked', False)
 
     print()
-    print('branch_publish v3 complete')
+    print('branch_publish v4 complete')
     print('=' * 56)
     print(f'  entry:                {args.title}')
     print(f'  depth_cap:            {args.depth_cap}')
     print(f'  orientation:          {orient}')
     print(f'  insertion_index:      {ins_idx}  (out of {n_exist} existing blocks)')
+    print(f'  image_source:         {img_src}{"  [BLOCKED at this depth]" if img_blk else ""}')
     print(f'  convergence:          {"disabled (--no-convergence)" if args.no_convergence else f"threshold={args.convergence_threshold}"}')
     print(f'  branch log:           {BRANCH_LOG.relative_to(REPO_ROOT)}')
     print()

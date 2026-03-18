@@ -1,7 +1,7 @@
 # Asset Pipeline — Blood in the Wire
 
 Covers the full media lifecycle from raw drops to web-ready images.
-Last updated: 2025-03 (v2 — media-priority + hygiene workflow added).
+Last updated: 2026-03 (v3 — depth-aware media source rules added).
 
 ---
 
@@ -28,16 +28,54 @@ project/assets/
 
 ---
 
-## Queue Order (User-Supplied-First Policy)
+## Queue Order — Depth-Aware Source Policy
 
-The pipeline enforces strict priority:
+The pipeline enforces strict priority that depends on the **publish level** (depth):
+
+### Surface level (`--level surface`, depth=0, default)
+
+Used for the front-page / `index.html` and first-level inline cards:
 
 1. **Scan `assets/incoming/`** — if ANY accepted image files exist (`.jpg`, `.jpeg`, `.png`), they are used **exclusively**.  The library is completely ignored until `incoming/` is empty.
 2. **Fall back to `assets/library/`** — only when `incoming/` contains no eligible files.
 
+### Deep level (`--level deep`, depth>0)
+
+Used for all linked / recursive / lower-level pages (node pages, content pages reached via branch links):
+
+1. **`assets/incoming/` is HARD-BLOCKED** — never selected, even if files are present.  A warning is logged when incoming files exist but are skipped.
+2. **`assets/library/`** is the only permitted source.
+3. If `library/` is empty, the call fails with a clear error (no image is better than a leaked incoming asset).
+
 Files are selected alphabetically (deterministic, reproducible).
 
-**Rationale:** A user-supplied image always carries stronger editorial intent than an auto-fetched one.  This policy ensures that whenever a human places a file in `incoming/`, it gets used next — no accidental library override.
+**Rationale:**
+- `incoming/` assets are user-supplied and may carry editorial or personal context. They are appropriate for the surface/front-page where the operator controls the narrative directly.
+- Linked/recursive pages are generated mechanically and must only use vetted, metadata-clean library assets that have no personal provenance.
+- This rule prevents incoming assets from leaking into auto-generated sub-pages.
+
+### Integration with branch_publish.py
+
+When calling `select_asset.py` for a linked/deep page, pass `--level deep`:
+
+```bash
+# Surface: incoming preferred
+web_path=$(python select_asset.py --level surface)
+
+# Deep: library only
+web_path=$(python select_asset.py --level deep)
+```
+
+When calling `branch_publish.py`, pass `--image-source incoming` or `--image-source library` to let the engine enforce the guard on recursive pages:
+
+```bash
+python branch_publish.py \
+  --title "..." \
+  --image-web-path "$web_path" \
+  --image-source incoming  # or 'library'
+```
+
+At `depth>0`, any `incoming`-sourced image is automatically suppressed by the engine even if accidentally passed through.
 
 ---
 

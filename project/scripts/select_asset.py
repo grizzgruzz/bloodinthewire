@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """
-select_asset.py  v1
+select_asset.py  v2
 ===================
 Media-priority + hygiene pipeline for Blood in the Wire.
 
 Responsibilities
 ----------------
-1. User-supplied-first:  If assets/incoming/ contains ANY files, select from
-   there exclusively.  The library is ignored until incoming is empty.
+1. Level-aware source policy:
+     SURFACE level (depth=0, --level surface, default):
+       incoming/ is the HIGHEST priority source.  If incoming/ has files,
+       they are used exclusively.  Falls back to library/ when incoming/ is
+       empty.
+     DEEP level (depth>0, --level deep):
+       incoming/ is COMPLETELY FORBIDDEN.  Only library/ assets may be used.
+       This is a hard rule — incoming/ images must never appear on linked /
+       recursive / lower-level pages.
 2. Consume-on-use:       The selected file is MOVED out of incoming (or
    copied from library) to assets/published/ with a timestamped name, so it
    cannot be accidentally reused.
@@ -19,16 +26,20 @@ Responsibilities
 4. Deterministic output: Prints a single absolute path to stdout (the
    stripped web-ready file) so calling scripts/templates can use it
    directly:
-       python select_asset.py         # picks & strips one asset
-       python select_asset.py --show  # just print which would be chosen
-       path=$(python select_asset.py) # capture path for shell scripts
+       python select_asset.py              # surface-level, picks & strips one asset
+       python select_asset.py --level deep # deep-level, library only, never incoming
+       python select_asset.py --show       # just print which would be chosen
+       path=$(python select_asset.py)      # capture path for shell scripts
 
 Usage
 -----
-    python select_asset.py [--show] [--dry-run]
+    python select_asset.py [--show] [--dry-run] [--level surface|deep]
 
 Flags
 ~~~~~
+--level      'surface' (default) or 'deep'.
+             surface: incoming/ takes priority over library/ when present.
+             deep:    incoming/ is NEVER used — hard-blocked. Library only.
 --show       Resolve + print which file would be selected; do NOT move/copy
              or strip.  Safe for preview.
 --dry-run    Same as --show (alias).
@@ -91,9 +102,20 @@ def _image_files(directory: Path) -> list[Path]:
     return files
 
 
-def select_source() -> tuple[Path, str]:
+def select_source(level: str = "surface") -> tuple[Path, str]:
     """
-    Apply user-supplied-first policy.
+    Apply source-policy based on publish level.
+
+    Parameters
+    ----------
+    level : 'surface' or 'deep'
+        'surface' (default, depth=0):
+            incoming/ takes priority.  Falls back to library/ when empty.
+        'deep' (depth>0):
+            incoming/ is HARD-BLOCKED — never used regardless of content.
+            Only library/ assets are returned.
+            Raises PermissionError if called with level='deep' but somehow
+            an incoming file were accidentally selected (belt-and-suspenders).
 
     Returns
     -------
@@ -101,26 +123,58 @@ def select_source() -> tuple[Path, str]:
 
     Raises
     ------
-    FileNotFoundError  if no eligible asset exists in either location.
+    FileNotFoundError  if no eligible asset exists in the allowed location(s).
+    PermissionError    if level='deep' and incoming/ would have been chosen
+                       (should not normally happen — guard only).
+    ValueError         if level is not 'surface' or 'deep'.
     """
-    incoming_files = _image_files(INCOMING_DIR)
-    if incoming_files:
-        chosen = incoming_files[0]   # deterministic: alphabetical first
-        log.info("SOURCE=incoming  file=%s  (%d file(s) in queue)",
-                 chosen.name, len(incoming_files))
-        return chosen, "incoming"
+    if level not in ("surface", "deep"):
+        raise ValueError(f"Invalid level '{level}': must be 'surface' or 'deep'.")
 
-    library_files = _image_files(LIBRARY_DIR)
-    if library_files:
-        chosen = library_files[0]
-        log.info("SOURCE=library   file=%s  (incoming is empty)",
-                 chosen.name)
-        return chosen, "library"
+    if level == "surface":
+        # Surface level: incoming/ has priority
+        incoming_files = _image_files(INCOMING_DIR)
+        if incoming_files:
+            chosen = incoming_files[0]   # deterministic: alphabetical first
+            log.info("SOURCE=incoming  level=surface  file=%s  (%d file(s) in queue)",
+                     chosen.name, len(incoming_files))
+            return chosen, "incoming"
 
-    raise FileNotFoundError(
-        "No eligible image assets found in incoming/ or library/. "
-        "Run fetch_random_assets.py or drop files into assets/incoming/."
-    )
+        library_files = _image_files(LIBRARY_DIR)
+        if library_files:
+            chosen = library_files[0]
+            log.info("SOURCE=library   level=surface  file=%s  (incoming is empty)",
+                     chosen.name)
+            return chosen, "library"
+
+        raise FileNotFoundError(
+            "No eligible image assets found in incoming/ or library/. "
+            "Run fetch_random_assets.py or drop files into assets/incoming/."
+        )
+
+    else:
+        # level == "deep": incoming/ is FORBIDDEN — library only.
+        # Belt-and-suspenders: log explicitly that incoming is being skipped.
+        incoming_files = _image_files(INCOMING_DIR)
+        if incoming_files:
+            log.info(
+                "GUARD: level=deep — incoming/ has %d file(s) but is BLOCKED at deep level. "
+                "Library only.",
+                len(incoming_files),
+            )
+
+        library_files = _image_files(LIBRARY_DIR)
+        if library_files:
+            chosen = library_files[0]
+            log.info("SOURCE=library   level=deep   file=%s  (incoming/ blocked at deep level)",
+                     chosen.name)
+            return chosen, "library"
+
+        raise FileNotFoundError(
+            "No eligible image assets found in library/ for deep-level selection. "
+            "incoming/ is blocked at this level. "
+            "Run fetch_random_assets.py to replenish assets/library/."
+        )
 
 
 # ─── Metadata stripping ───────────────────────────────────────────────────────
@@ -237,9 +291,18 @@ def consume_and_publish(src: Path, queue: str) -> Path:
 
 # ─── Main pipeline ────────────────────────────────────────────────────────────
 
-def run(dry_run: bool = False) -> Path:
+def run(dry_run: bool = False, level: str = "surface") -> Path:
     """
     Full pipeline:  select → consume/archive → strip → web output.
+
+    Parameters
+    ----------
+    dry_run : bool
+        If True, resolve source but do NOT move/copy/strip.
+    level : 'surface' or 'deep'
+        Controls which sources are eligible.  See select_source() for details.
+        'surface' (default): incoming/ priority, library/ fallback.
+        'deep': library/ only; incoming/ hard-blocked.
 
     Returns the web-ready Path (in assets/web/).
     """
@@ -247,11 +310,12 @@ def run(dry_run: bool = False) -> Path:
     for d in (INCOMING_DIR, LIBRARY_DIR, PUBLISHED_DIR, WEB_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
-    # 1. Select source
-    source, queue = select_source()
+    # 1. Select source (level-aware)
+    source, queue = select_source(level=level)
 
     if dry_run:
-        log.info("DRY-RUN: would select %s from %s — stopping here.", source.name, queue)
+        log.info("DRY-RUN: would select %s from %s  level=%s — stopping here.",
+                 source.name, queue, level)
         return source
 
     # 2. Consume (move from incoming) or archive (copy from library)
@@ -262,7 +326,7 @@ def run(dry_run: bool = False) -> Path:
     web_name = published_path.stem.replace("__", "_") + published_path.suffix
     web_path = WEB_DIR / web_name
     method = strip_metadata(published_path, web_path)
-    log.info("WEB_READY  path=%s  strip_method=%s", web_path, method)
+    log.info("WEB_READY  path=%s  level=%s  strip_method=%s", web_path, level, method)
 
     return web_path
 
@@ -275,16 +339,28 @@ def main() -> int:
         "--show", "--dry-run", action="store_true",
         help="Resolve which file would be selected without moving/stripping anything."
     )
+    parser.add_argument(
+        "--level", default="surface", choices=["surface", "deep"],
+        help=(
+            "Publish level controlling which sources are eligible. "
+            "'surface' (default): incoming/ takes priority, library/ is fallback. "
+            "'deep': incoming/ is HARD-BLOCKED; only library/ assets are used. "
+            "Use 'deep' for all linked/recursive/lower-level pages."
+        ),
+    )
     args = parser.parse_args()
 
     try:
-        result = run(dry_run=args.show)
+        result = run(dry_run=args.show, level=args.level)
         # Emit the path to stdout so shell scripts can capture it
         print(result)
         return 0
     except FileNotFoundError as exc:
         log.error("%s", exc)
         return 1
+    except PermissionError as exc:
+        log.error("LEVEL GUARD: %s", exc)
+        return 3
     except Exception as exc:
         log.error("Unexpected error: %s", exc)
         return 2
