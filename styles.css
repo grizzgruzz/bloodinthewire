@@ -107,32 +107,9 @@ a:hover {
   color: #fff;
 }
 
-.hero-pair {
-  display: flex;
-  align-items: stretch;
-  gap: 18px;
-  margin: 4px 0 14px;
-}
-
-.companion-panel {
-  flex: 1 1 auto;
-  min-height: 420px;
-  margin: 0;
-  padding: 10px 12px 12px;
-  background: rgba(14,14,14,.86);
-  border: 1px dashed #3a3a3a;
-}
-
-.companion-panel h3 {
-  margin: 0 0 8px;
-  color: #efe4d1;
-  letter-spacing: .5px;
-}
-
+/* companion render block — cascade-block variant, no longer hero-locked */
 .companion-figure {
-  float: left;
-  width: 220px;
-  margin: 0 12px 8px 0;
+  margin: 0;
   border: 1px solid #333;
   background: #090909;
   padding: 6px;
@@ -149,17 +126,15 @@ a:hover {
   margin: 0 0 10px;
 }
 
-.wanted-panel {
-  flex: 0 0 285px;
-  margin: 0;
-  padding: 10px 11px 12px;
+/* wanted block — cascade-block variant, preserves poster aesthetic */
+.cascade-wanted {
   background: #d6cdbb;
   color: #1a1512;
-  border: 3px double #665748;
+  border: 3px double #665748 !important;
   box-shadow: 0 0 0 1px rgba(0,0,0,.22);
 }
 
-.wanted-panel h3 {
+.cascade-wanted h3 {
   margin: 0 0 8px;
   color: #2b160f;
   text-align: center;
@@ -489,28 +464,6 @@ marquee {
 }
 
 @media (max-width: 780px) {
-  .hero-pair {
-    display: block;
-  }
-
-  .wanted-panel,
-  .companion-panel {
-    width: auto;
-    min-height: 0;
-    margin-left: 0;
-    margin-right: 0;
-  }
-
-  .wanted-panel {
-    margin-top: 12px;
-  }
-
-  .companion-figure {
-    float: none;
-    width: auto;
-    margin-right: 0;
-  }
-
   .post-skew-2,
   .post-skew-3,
   .post-skew-1 {
