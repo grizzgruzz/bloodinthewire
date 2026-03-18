@@ -20,11 +20,11 @@ It does NOT write any narrative.  Content production belongs to wirevoice-core.
 
 USAGE
 -----
-    # Use latest published note + explicit image:
+    # Auto-pair note to image (by stem/basename match in published/):
     python build_voice_request.py \\
         --image-web-path assets/web/some_image.jpg
 
-    # Use latest published note auto-detected:
+    # Fully auto: latest web image, note auto-paired by basename:
     python build_voice_request.py
 
     # Full explicit control:
@@ -75,16 +75,73 @@ log = logging.getLogger("build_voice_request")
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def find_latest_note() -> Path | None:
-    """Return the most recently modified .note.txt in published/."""
+def find_paired_note(image_web_path: Path | str | None) -> Path | None:
+    """
+    Find the .note.txt in published/ that was archived alongside the given
+    web image.
+
+    Matching strategy
+    -----------------
+    The published/ filename pattern is ``{stem}__{timestamp}{ext}`` for
+    images and ``{stem}__{timestamp}.note.txt`` for sidecars.  Both share
+    the same ``{stem}`` (original basename without extension).
+
+    Given the *web* image path (assets/web/{stem}_{timestamp}{ext}), we
+    derive the original stem (strip the timestamp suffix), then look for a
+    published note whose stem matches that original stem.
+
+    If ``image_web_path`` is None or no match is found, returns None so
+    callers can fall back gracefully.
+    """
     if not PUBLISHED_DIR.is_dir():
         return None
-    notes = sorted(
+    if image_web_path is None:
+        return None
+
+    img = Path(image_web_path)
+    # web/ names use a single underscore separator: {stem}_{timestamp}{ext}
+    # published/ names use a double-underscore separator: {stem}__{timestamp}{ext}
+    # Derive the original stem by stripping the last _<timestamp> segment.
+    # We split on "__" (published archive separator) first; if the web name
+    # has the single-underscore form, reconstruct from that.
+    #
+    # Canonical approach: the published/ archive is the ground truth.
+    # Scan published/ for a .note.txt whose non-timestamp stem prefix matches
+    # the image's non-timestamp stem prefix.
+
+    def _base_stem(name: str) -> str:
+        """Strip the __<timestamp> or _<timestamp> suffix to get the original stem."""
+        # Try double-underscore (published/ form) first
+        if "__" in name:
+            return name.split("__")[0]
+        # Try single-underscore with a timestamp-shaped suffix (web/ form):
+        # last segment looks like YYYYMMDD-HHMMSS
+        import re
+        m = re.match(r"^(.+)_(\d{8}-\d{6})$", name)
+        if m:
+            return m.group(1)
+        # No recognised pattern — use full stem
+        return name
+
+    target_base = _base_stem(img.stem)
+
+    # Look for matching note in published/
+    candidates = sorted(
         PUBLISHED_DIR.glob("*.note.txt"),
         key=lambda p: p.stat().st_mtime,
-        reverse=True,
+        reverse=True,  # newest first so we pick the most recent if multiple match
     )
-    return notes[0] if notes else None
+    for note in candidates:
+        note_base = _base_stem(note.stem)  # note stem is e.g. "2ceb9b27-...__20260318-003852"
+        if note_base == target_base:
+            log.info(
+                "PAIRED note: %s → matched to image stem %r",
+                note.name, target_base,
+            )
+            return note
+
+    log.debug("No paired note found in published/ for image stem %r", target_base)
+    return None
 
 
 def find_latest_web_image() -> Path | None:
@@ -258,11 +315,19 @@ def main() -> int:
             log.error("Note file not found: %s", note_file)
             return 1
     else:
-        note_file = find_latest_note()
-        if note_file:
-            log.info("Auto-detected note: %s", note_file)
+        # Auto-detect: match the note to the selected image by basename stem.
+        # This prevents accidentally loading an unrelated published note.
+        # We resolve the image path first so we can use it for pairing.
+        if args.image_web_path:
+            _img_for_pairing: Path | str | None = args.image_web_path
         else:
-            log.info("No note file found in published/ — proceeding without note")
+            _img_for_pairing = find_latest_web_image()
+
+        note_file = find_paired_note(_img_for_pairing)
+        if note_file:
+            log.info("Auto-paired note: %s", note_file.name)
+        else:
+            log.info("No paired note found in published/ for this image — proceeding without note")
 
     # Resolve image path
     if args.image_web_path:

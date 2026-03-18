@@ -272,7 +272,12 @@ def consume_and_publish(src: Path, queue: str) -> Path:
     Move (incoming) or copy (library) *src* into published/ with a timestamp
     suffix so the original is archived and cannot be reused.
 
-    Returns the published/ path.
+    If *src* is from incoming/ and has a matching .note.txt sidecar
+    (same stem, e.g. ``<uuid>.note.txt`` alongside ``<uuid>.png``),
+    that sidecar is consumed/moved at the same time under the same
+    timestamped name so it stays paired with the image in published/.
+
+    Returns the published/ path (image, not the note).
     """
     PUBLISHED_DIR.mkdir(parents=True, exist_ok=True)
     ts = time.strftime("%Y%m%d-%H%M%S")
@@ -282,9 +287,23 @@ def consume_and_publish(src: Path, queue: str) -> Path:
     if queue == "incoming":
         shutil.move(str(src), published_path)   # consume: removes from incoming
         log.info("CONSUME  moved %s → published/%s", src.name, published_name)
+
+        # --- Sidecar: move matching .note.txt with the image ---
+        sidecar_src = src.parent / f"{src.stem}.note.txt"
+        if sidecar_src.is_file():
+            sidecar_published_name = f"{src.stem}__{ts}.note.txt"
+            sidecar_published_path = PUBLISHED_DIR / sidecar_published_name
+            shutil.move(str(sidecar_src), sidecar_published_path)
+            log.info(
+                "CONSUME  moved sidecar %s → published/%s",
+                sidecar_src.name, sidecar_published_name,
+            )
+        else:
+            log.debug("No .note.txt sidecar found for %s — skipping", src.name)
     else:
         shutil.copy2(src, published_path)
         log.info("ARCHIVE  copied %s → published/%s", src.name, published_name)
+        # Library assets have no user-supplied sidecars; nothing to move.
 
     return published_path
 
