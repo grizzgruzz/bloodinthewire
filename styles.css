@@ -107,29 +107,50 @@ a:hover {
   color: #fff;
 }
 
-.side-rail {
+.wanted-panel {
   float: right;
-  width: 235px;
-  margin: 4px 0 14px 16px;
-  padding: 10px 12px;
-  background: var(--rail);
-  border: 1px dashed #383838;
-  transform: rotate(.4deg);
+  width: 285px;
+  margin: 4px 0 14px 18px;
+  padding: 10px 11px 12px;
+  background: #d6cdbb;
+  color: #1a1512;
+  border: 3px double #665748;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.22);
 }
 
-.side-rail h3 {
+.wanted-panel h3 {
   margin: 0 0 8px;
-  font-size: 1rem;
-  color: #f4d2d2;
+  color: #2b160f;
+  text-align: center;
+  font-size: 1.4rem;
+  letter-spacing: 1px;
 }
 
-.side-rail ul {
+.wanted-figure {
+  margin: 0 0 10px;
+  padding: 6px;
+  border: 1px solid #72624d;
+  background: #b8aa95;
+}
+
+.wanted-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #534637;
+  filter: contrast(1.05) saturate(.85);
+}
+
+.wanted-notes {
   margin: 0;
   padding-left: 18px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: .93rem;
+  line-height: 1.35;
 }
 
-.side-rail li {
-  margin: 0 0 7px;
+.wanted-notes li {
+  margin: 0 0 8px;
 }
 
 .post, .links {
@@ -198,11 +219,10 @@ marquee {
 }
 
 @media (max-width: 780px) {
-  .side-rail {
+  .wanted-panel {
     float: none;
     width: auto;
     margin-left: 0;
-    transform: none;
   }
 
   .post-skew-2,
