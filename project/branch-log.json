@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "version": 1,
+    "note": "Permanent record of branch decisions. Never modify manually \u2014 branch_publish.py appends here."
+  },
+  "entries": [
+    {
+      "entry_id": "entry_0003",
+      "title": "entry_0003 :: no face again",
+      "depth": 0,
+      "roll": 1,
+      "action": "inline",
+      "page": "index.html",
+      "target_page": "index.html",
+      "cascade_pos": "cp-a",
+      "timestamp_utc": "2026-03-17T00:00:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Pre-branching post; deterministic assignment on model introduction."
+    },
+    {
+      "entry_id": "entry_0002",
+      "title": "entry_0002 :: sighting",
+      "depth": 0,
+      "roll": 0,
+      "action": "link",
+      "page": "index.html",
+      "target_page": "index.html",
+      "cascade_pos": "cp-d",
+      "dest_page": "fragments/sighting-0002.html",
+      "dest_type": "content",
+      "dest_roll": 1,
+      "timestamp_utc": "2026-03-17T00:00:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Pre-branching post; deterministic assignment on model introduction."
+    },
+    {
+      "entry_id": "entry_0001",
+      "title": "entry_0001 :: tuesday",
+      "depth": 0,
+      "roll": 1,
+      "action": "inline",
+      "page": "index.html",
+      "target_page": "index.html",
+      "cascade_pos": "cp-c",
+      "timestamp_utc": "2026-03-17T00:00:00Z",
+      "posted_date": "2026-03-17",
+      "note": "Pre-branching post; deterministic assignment on model introduction."
+    }
+  ]
+}

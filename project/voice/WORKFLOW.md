@@ -1,6 +1,6 @@
 # BLOODINTHEWIRE — Voice Post Workflow
 
-Version: v1
+Version: v2
 Status: Canon
 
 ---
@@ -120,14 +120,20 @@ python scripts/generate_post.py \
     --voice-draft-file "$draft" \
     --image-web-path "$path"
 
-# 6. Publish newest-first in index
-python scripts/publish_to_site.py \
+# 6. Publish via branching engine (replaces publish_to_site.py for new posts)
+#    branch_publish.py rolls 0|1, decides inline vs. linked, and writes
+#    everything automatically. No manual decision needed.
+python scripts/branch_publish.py \
     --title "<entry title>" \
-    --timestamp "<HH:MM|OMIT>" \
+    --timestamp "<HH:MM>" \
     --teaser "<one-line teaser>" \
     --fragment-href "fragments/<entry-file>.html" \
     --posted-date "$(date +%F)" \
+    --image-web-path "$path" \
     --links-note "<short note>"
+    # optionally: --depth-cap 4   (default 5)
+    # optionally: --target-page nodes/some-node.html  (for deeper nesting)
+    # optionally: --force-roll 1  (testing/override only)
 ```
 
 ---

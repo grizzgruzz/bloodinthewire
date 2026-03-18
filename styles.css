@@ -251,6 +251,164 @@ a:hover {
   margin-left: 6px;
 }
 
+/* ── CASCADING POST BLOCKS ─────────────────────────────────────────────── */
+/* Used by branch_publish.py for all future posts.                          */
+/* Existing posts were hand-assigned on initial conversion.                 */
+
+.cascade-block {
+  clear: both;
+  position: relative;
+  padding: 12px 14px;
+  margin: 18px 0;
+  border: 1px dashed #313131;
+  background: rgba(12,12,12,.82);
+}
+
+.cascade-block h2 {
+  margin-top: 0;
+}
+
+/* Rich card — inline content, full teaser or body visible */
+.cascade-rich {
+  border-left: 3px solid #4a1111;
+}
+
+/* Lean link card — minimal, just label + hyperlink */
+.cascade-link {
+  background: rgba(7,7,7,.55);
+  border-style: solid dashed;
+  border-color: #252525 #484848;
+}
+
+.cascade-link h2 {
+  font-size: .97rem;
+  color: #b8b2a5;
+  margin: 0 0 5px;
+  letter-spacing: .3px;
+}
+
+.cascade-link .lean-link {
+  font-size: .9rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Node card — junction page link; marks a branching point */
+.cascade-node {
+  border-style: dotted;
+  border-color: #3a3a3a;
+  background: rgba(6,6,6,.5);
+}
+
+.cascade-node::after {
+  content: "→ node";
+  position: absolute;
+  top: 9px;
+  right: 11px;
+  color: #3d3a36;
+  font-size: .78rem;
+  letter-spacing: .4px;
+}
+
+/* ── STAGGER POSITIONS (cp-a … cp-g, cycles for new posts) ────────────── */
+
+.cp-a {
+  margin-left: 0;
+  width: 93%;
+}
+
+.cp-b {
+  margin-left: 26px;
+  width: 76%;
+  border-right: 2px dotted #5b5b5b;
+  border-left-color: #2a2a2a;
+}
+
+.cp-c {
+  margin-left: 9px;
+  width: 88%;
+  background: rgba(10,10,10,.7);
+}
+
+.cp-d {
+  margin-left: 44px;
+  width: 63%;
+  border-left: 2px solid #2a1a1a;
+  border-style: dashed dashed dashed solid;
+}
+
+.cp-e {
+  margin-left: 16px;
+  width: 82%;
+}
+
+.cp-f {
+  margin-left: 0;
+  width: 56%;
+  border: 1px solid #252525;
+  border-left: 3px solid #330000;
+  background: rgba(14,8,8,.6);
+}
+
+.cp-g {
+  margin-left: 36px;
+  width: 73%;
+  border-style: dashed;
+  border-color: #3d3d3d;
+}
+
+/* ── NODE PAGE STYLES ──────────────────────────────────────────────────── */
+/* Applied on generated nodes/*.html pages                                  */
+
+.node-shell {
+  padding: 14px 16px;
+  border: 1px dashed #2e2e2e;
+  background: rgba(10,10,10,.75);
+  margin: 16px 0;
+}
+
+.node-shell .node-label {
+  color: #5a5650;
+  font-size: .8rem;
+  margin: 0 0 10px;
+  letter-spacing: .5px;
+}
+
+.node-threads {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-top: 1px dashed #2c2c2c;
+  background: rgba(6,6,6,.4);
+}
+
+.node-threads h4 {
+  margin: 0 0 8px;
+  color: #6a6560;
+  font-size: .88rem;
+  letter-spacing: .3px;
+}
+
+.node-threads ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.node-threads li {
+  margin: 0 0 6px;
+  font-size: .92rem;
+}
+
+.branch-depth-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 5px;
+  background: #181818;
+  border: 1px dotted #333;
+  color: #565250;
+  font-size: .75rem;
+  vertical-align: middle;
+}
+
 marquee {
   color: #ff4e4e;
   border-top: 1px solid #2a2a2a;
