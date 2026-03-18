@@ -107,6 +107,42 @@ a:hover {
   color: #fff;
 }
 
+.companion-panel {
+  float: left;
+  width: calc(100% - 315px);
+  min-height: 420px;
+  margin: 4px 18px 14px 0;
+  padding: 10px 12px 12px;
+  background: rgba(14,14,14,.86);
+  border: 1px dashed #3a3a3a;
+}
+
+.companion-panel h3 {
+  margin: 0 0 8px;
+  color: #efe4d1;
+  letter-spacing: .5px;
+}
+
+.companion-figure {
+  float: left;
+  width: 220px;
+  margin: 0 12px 8px 0;
+  border: 1px solid #333;
+  background: #090909;
+  padding: 6px;
+}
+
+.companion-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: contrast(1.08) brightness(.94);
+}
+
+.companion-copy p {
+  margin: 0 0 10px;
+}
+
 .wanted-panel {
   float: right;
   width: 285px;
@@ -239,10 +275,19 @@ marquee {
 }
 
 @media (max-width: 780px) {
-  .wanted-panel {
+  .wanted-panel,
+  .companion-panel {
     float: none;
     width: auto;
+    min-height: 0;
     margin-left: 0;
+    margin-right: 0;
+  }
+
+  .companion-figure {
+    float: none;
+    width: auto;
+    margin-right: 0;
   }
 
   .post-skew-2,
