@@ -91,7 +91,7 @@ If the body text of a post needs to change, that change goes back to
  │     • Review content/drafts/<slug>.md for tone and accuracy      │
  │     • If prose needs changing → return to wirevoice-core (step 4)│
  │     • Copy HTML fragment to fragments/                           │
-│     • Use scripts/publish_to_site.py for newest-first index insert│
+ │     • Use scripts/branch_publish.py for branching-engine publish │
  │     • Move markdown to content/entries/ and mark published       │
  │     • git add new files; review; commit when satisfied           │
  └──────────────────────────────────────────────────────────────────┘

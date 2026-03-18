@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-branch_publish.py  v5
+branch_publish.py  v7
 =====================
 Branching-publish engine for bloodinthewire.
 
@@ -35,6 +35,7 @@ v2 additions
   • INSERTION POSITION roll: new cards land at any position within the
     CASCADE block, not always at the top. The index is stored for
     reproducibility. 0 = before first block, N = after Nth block.
+    (Superseded by v6 zone roll: top/middle/bottom.)
 
 v3 additions
 ------------
@@ -69,6 +70,42 @@ v5 additions
   • branch_resolve passes effective_image to all make_link_card calls.
   • log_record now records image_web_path for auditability.
 
+v6 additions
+------------
+  • THREE-ZONE PLACEMENT ROLL for successful publishes:
+      Each insertion now rolls one of {top, middle, bottom} and maps to a
+      deterministic insertion_index for that zone.
+      - top    -> insertion_index=0
+      - middle -> insertion_index=floor(n_existing/2)
+      - bottom -> insertion_index=n_existing
+  • The chosen insertion_zone is stored in branch-log.json for auditability.
+  • This replaces the old uniform random insertion_index across all positions.
+
+v7 additions
+------------
+  • DEPTH_CAP_DEFAULT raised to 30 (from 5) to prevent runaway depth while
+    allowing genuinely deep trees.
+  • DEPTH PROGRESSION WEIGHTING (hard rule) when hyperlink=yes at depth>=1:
+      - depth 1 decision (first deeper): 70% new page / 30% link-out existing
+      - depth 2 decision (next):         60% new page / 40% link-out existing
+      - depth >=3 (all deeper levels):   50% / 50%
+    Previously, link-out (convergence) was purely relevance-score-driven.
+    Now, at depth>=1, a probability gate controls whether convergence is even
+    attempted: if the gate says "new page", skip convergence and always create
+    a fresh page.  The gate roll is logged as 'depth_gate_roll'.
+  • STATIC NAVIGATION SEMANTICS added to generated node and content pages:
+      - Junction nodes: header now shows a "navigate up" link to parent page
+        and footer always includes parent + home links.
+      - Content pages: same — header stamp includes parent link, footer has
+        parent and home affordances.
+      - Terminal branches (content pages, convergence targets) get sensible
+        back-navigation in their footers (already present for content pages;
+        now made explicit for node pages too).
+  • Node/content page generators accept parent_href parameter to wire up
+    actual up-links rather than always defaulting to index.html.
+  • All changes are backward-compatible with existing pages; old pages are
+    not retroactively rewritten.
+
 USAGE
 -----
   python branch_publish.py \\
@@ -81,7 +118,7 @@ USAGE
       [--image-web-path project/assets/web/img.jpg] \\
       [--image-source incoming|library]     # tracks origin; 'incoming' blocked below depth=0
       [--target-page index.html]            # defaults to index.html
-      [--depth-cap 5]                       # max branching depth (default 5)
+      [--depth-cap 30]                      # max branching depth (default 30)
       [--convergence-threshold 1]           # min shared keywords to reuse (default 1)
       [--no-convergence]                    # disable reuse check (testing only)
       [--force-roll 1]                      # override branch roll (testing only)
@@ -104,8 +141,8 @@ DESIGN NOTES
     future deeper posts. The spiderweb grows organically.
   - Orientation (vertical|horizontal) is rolled once per root publish call
     and stored permanently in branch-log.json. It is not re-derived.
-  - Insertion index is rolled once and stored. 0 = top, N = after Nth
-    existing cascade block. Ensures reproducible page structure.
+  - Insertion zone is rolled once (top/middle/bottom) and mapped to a
+    deterministic insertion_index. Both are stored for reproducibility.
   - PUBLIC LINK ENFORCEMENT: --fragment-href is validated at startup.
     Only fragments/*.html, nodes/*.html, index.html, and root-level .html
     pages are accepted.  Any path into project/, content/, *.md, *.frag,
@@ -141,8 +178,29 @@ INDEX_HTML   = REPO_ROOT / 'index.html'
 NODES_DIR    = REPO_ROOT / 'nodes'
 BRANCH_LOG   = REPO_ROOT / 'project' / 'branch-log.json'
 
-DEPTH_CAP_DEFAULT           = 5
+DEPTH_CAP_DEFAULT           = 30
 CONVERGENCE_THRESHOLD_DEFAULT = 1   # min shared motif words to reuse existing page
+
+# Depth progression weighting (v7):
+# When hyperlink=yes (roll=0) at depth>=1, a probability gate controls whether
+# convergence (link-out to existing page) is even attempted.  If the gate says
+# "new page", convergence is skipped and a fresh page is always created.
+#
+# P(new page) by depth:
+#   depth 1 (first deeper decision): 70% new page / 30% allow convergence
+#   depth 2 (next):                  60% new page / 40% allow convergence
+#   depth >=3 (all deeper levels):   50% / 50%
+#
+# At depth 0 (surface), this gate is NOT applied — convergence runs normally.
+def _depth_new_page_probability(depth: int) -> float:
+    """Return P(new page) for the depth progression weighting gate."""
+    if depth <= 0:
+        return 0.0   # not used at surface; convergence always runs normally
+    if depth == 1:
+        return 0.70
+    if depth == 2:
+        return 0.60
+    return 0.50
 CASCADE_POSITIONS = ['cp-a', 'cp-b', 'cp-c', 'cp-d', 'cp-e', 'cp-f', 'cp-g']
 ORIENTATIONS      = ['vertical', 'horizontal']
 
@@ -283,17 +341,32 @@ def roll_orientation(force: str | None = None) -> str:
     return random.choice(ORIENTATIONS)
 
 
-def roll_insertion_index(n_existing: int, force: int | None = None) -> int:
+def roll_insertion_index(n_existing: int, force: int | None = None) -> tuple[int, str]:
     """
-    Roll an insertion index in [0, n_existing].
-    0 = before first block (top), N = after Nth block.
-    Stored once; reproducible from branch-log.
+    Roll insertion placement as one of three zones: top | middle | bottom.
+
+    Returns: (insertion_index, insertion_zone)
+      - top    -> 0
+      - middle -> floor(n_existing / 2)
+      - bottom -> n_existing
+
+    If force is provided, clamps and uses the explicit insertion index and
+    marks insertion_zone='forced'.
     """
     if force is not None:
-        return max(0, min(int(force), n_existing))
+        forced = max(0, min(int(force), n_existing))
+        return forced, 'forced'
+
+    zone = random.choice(['top', 'middle', 'bottom'])
     if n_existing <= 0:
-        return 0
-    return random.randint(0, n_existing)
+        # All zones map to index 0 on an empty page; zone still rolled for auditability.
+        return 0, zone
+
+    if zone == 'top':
+        return 0, zone
+    if zone == 'middle':
+        return n_existing // 2, zone
+    return n_existing, zone
 
 
 # ── Contextual relevance for existing-page convergence ───────────────────────
@@ -629,8 +702,19 @@ def make_node_page(
     entry_title: str,
     posted_date: str,
     depth: int,
+    parent_href: str = '../index.html',
 ) -> str:
-    """Generate a node junction page shell."""
+    """Generate a node junction page shell.
+
+    parent_href: relative link back to the page that spawned this node.
+                 Defaults to '../index.html' (root).  Used to wire up
+                 static up-navigation (House-of-Leaves feel).
+    """
+    # Navigation: up goes to parent; home always goes to entrypoint
+    parent_label = 'return to parent' if parent_href != '../index.html' else 'return to entrypoint'
+    nav_up = f'<p class="nav-up"><a href="{_html.escape(parent_href)}">[up] {parent_label}</a></p>'
+    nav_home = '' if parent_href == '../index.html' else '<p class="nav-home"><a href="../index.html">[home] return to entrypoint</a></p>'
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -644,6 +728,7 @@ def make_node_page(
   <main class="container">
     <header>
       <p class="stamp">NODE // depth={depth} // branched from: {_html.escape(entry_title)}</p>
+      {nav_up}
       <h2>{_html.escape(node_slug)}</h2>
       <p class="sub">branch junction // follow the threads</p>
       <hr />
@@ -666,7 +751,8 @@ def make_node_page(
 
     <footer>
       <hr />
-      <p><a href="../index.html">return to entrypoint</a></p>
+      {nav_up}
+      {nav_home}
       <p class="tiny-note">depth={depth} // branched: {posted_date}</p>
     </footer>
   </main>
@@ -686,8 +772,13 @@ def make_content_page(
     posted_date: str,
     depth: int,
     orientation: str = 'vertical',
+    parent_href: str = '../index.html',
 ) -> str:
-    """Generate a fresh content page (roll=1 at deeper depth)."""
+    """Generate a fresh content page (roll=1 at deeper depth).
+
+    parent_href: relative link back to the page that spawned this content node.
+                 Used to wire up static up-navigation (House-of-Leaves feel).
+    """
     ts_block = ''
     if timestamp:
         ts_block = f'    <p><strong>{_html.escape(timestamp)}</strong> — {_html.escape(teaser)}</p>\n'
@@ -710,6 +801,11 @@ def make_content_page(
     if fragment_href:
         frag_link = f'    <p><a href="../{_html.escape(fragment_href)}">full entry</a></p>\n'
 
+    # Navigation: up to parent; home only if parent isn't already index
+    parent_label = 'return to parent' if parent_href != '../index.html' else 'return to entrypoint'
+    nav_up = f'<p class="nav-up"><a href="{_html.escape(parent_href)}">[up] {parent_label}</a></p>'
+    nav_home = '' if parent_href == '../index.html' else '<p class="nav-home"><a href="../index.html">[home] return to entrypoint</a></p>'
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -723,6 +819,7 @@ def make_content_page(
   <main class="container">
     <header>
       <p class="stamp">CONTENT NODE // depth={depth} // orient={orientation}</p>
+      {nav_up}
       <h2>{_html.escape(entry_title)}</h2>
       <hr />
     </header>
@@ -730,7 +827,8 @@ def make_content_page(
 {ts_block}{body_block}{img_block}{frag_link}
     <footer>
       <hr />
-      <p><a href="../index.html">return to entrypoint</a></p>
+      {nav_up}
+      {nav_home}
       <p class="tiny-note">depth={depth} // posted: {posted_date}</p>
     </footer>
   </main>
@@ -879,6 +977,8 @@ def branch_resolve(
     is_root: bool = True,
     # orientation is rolled once at root and propagated down
     orientation: str | None = None,
+    # parent_href for up-navigation in generated pages (v7)
+    parent_href: str = '../index.html',
 ) -> None:
     """
     Recursively resolve branch decisions and write pages.
@@ -889,11 +989,19 @@ def branch_resolve(
       - Roll insertion index — once per call, stored in log
       - Roll=1: insert rich card inline on target_page
       - Roll=0:
-          v3 CONVERGENCE CHECK FIRST: scan for a contextually relevant existing
-          page. If found (score >= convergence_threshold), insert a lean link
-          card pointing to it and STOP (no new pages created, no recursion).
-          If not found: insert link card on target_page, create destination page,
-          recurse into destination (original v2 behaviour).
+          v7 DEPTH PROGRESSION GATE (depth>=1 only):
+            A probability gate controls whether convergence is even attempted:
+            depth=1 → 70% skip-convergence/new-page, 30% allow convergence
+            depth=2 → 60% skip, 40% allow
+            depth>=3 → 50% skip, 50% allow
+            At depth=0 (surface), gate is not applied; original behaviour preserved.
+          v3 CONVERGENCE CHECK (if gate allows):
+            Scan for a contextually relevant existing page. If found
+            (score >= convergence_threshold), insert a lean link card pointing
+            to it and STOP (no new pages created, no recursion).
+          If gate blocked convergence OR no relevant page found:
+            Insert link card on target_page, create destination page,
+            recurse into destination.
 
     All rolls are stored in branch_log for reproducibility.
 
@@ -901,6 +1009,10 @@ def branch_resolve(
       image_web_path from incoming/ is only used at depth=0 (surface/front-page).
       At depth>0, if image_source=='incoming', the image is suppressed and a
       warning is emitted.  Only library assets may appear on deeper pages.
+
+    STATIC NAVIGATION (v7):
+      parent_href is threaded into generated node/content pages so up-links
+      always point to the actual parent page (not just index.html).
     """
     # Apply depth-based media source guard before any HTML is written
     effective_image = image_allowed_at_depth(image_web_path, image_source, depth)
@@ -913,7 +1025,7 @@ def branch_resolve(
 
     # Count existing blocks on this page to determine insertion index range
     n_existing = count_cascade_blocks(target_page)
-    ins_idx = roll_insertion_index(
+    ins_idx, ins_zone = roll_insertion_index(
         n_existing,
         force_insertion_index if is_root else None,
     )
@@ -927,6 +1039,7 @@ def branch_resolve(
         'roll':            effective_roll,
         'orientation':     orientation,
         'insertion_index': ins_idx,
+        'insertion_zone':  ins_zone,
         'n_existing_at_publish': n_existing,
         'target_page':    str(target_page.relative_to(REPO_ROOT)),
         'timestamp_utc':  time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
@@ -961,7 +1074,7 @@ def branch_resolve(
         log_record['page']   = str(target_page.relative_to(REPO_ROOT))
         summary.append(
             f'  depth={depth}  INLINE → {target_page.relative_to(REPO_ROOT)}'
-            f'  pos={cascade_pos}  orient={orientation}  insert_idx={ins_idx}/{n_existing}'
+            f'  pos={cascade_pos}  orient={orientation}  insert={ins_zone}@{ins_idx}/{n_existing}'
         )
 
     else:
@@ -975,9 +1088,27 @@ def branch_resolve(
         #
         # This prevents runaway node sprawl and keeps the site web-like.
         # Reused links must be contextually appropriate — not random.
+        #
+        # v7 DEPTH PROGRESSION GATE (depth>=1 only):
+        # At depth>=1, a probability gate is applied BEFORE the convergence check.
+        # If the gate says "new page", skip convergence entirely and always
+        # create a fresh page.  The gate probability scales with depth:
+        #   depth=1: 70% new page / 30% allow convergence
+        #   depth=2: 60% new page / 40% allow convergence
+        #   depth>=3: 50% / 50%
+        # At depth=0 (surface), gate is not applied (original behaviour).
+
+        # Apply depth progression gate
+        depth_gate_blocked = False
+        depth_gate_roll    = None
+        if depth >= 1 and not no_convergence:
+            p_new = _depth_new_page_probability(depth)
+            depth_gate_roll = random.random()
+            if depth_gate_roll < p_new:
+                depth_gate_blocked = True  # skip convergence → always new page
 
         convergence_result = None
-        if not no_convergence:
+        if not no_convergence and not depth_gate_blocked:
             exclude_norm = set()
             exclude_norm.add(
                 str(target_page.relative_to(REPO_ROOT)).replace('\\', '/')
@@ -991,6 +1122,12 @@ def branch_resolve(
             convergence_result = select_relevant_existing_page(
                 title, teaser, existing_candidates, threshold=convergence_threshold
             )
+
+        # Record gate result for auditability
+        if depth_gate_roll is not None:
+            log_record['depth_gate_p_new'] = round(_depth_new_page_probability(depth), 2)
+            log_record['depth_gate_roll']  = round(depth_gate_roll, 4)
+            log_record['depth_gate_blocked_convergence'] = depth_gate_blocked
 
         if convergence_result is not None:
             # ── CONVERGE: link to existing page, branching ends ──────────────
@@ -1026,7 +1163,7 @@ def branch_resolve(
             summary.append(
                 f'  depth={depth}  LINK-EXISTING → {conv_rel}'
                 f'  (score={conv_score}, threshold={convergence_threshold})'
-                f'  pos={cascade_pos}  orient={orientation}'
+                f'  pos={cascade_pos}  orient={orientation}  insert={ins_zone}@{ins_idx}/{n_existing}'
                 f'  *** BRANCHING ENDS HERE (convergence) ***'
             )
             # NO RECURSION — branching ends at an existing page
@@ -1040,6 +1177,10 @@ def branch_resolve(
             # Recursive roll for the destination
             dest_roll = roll()
             deeper_depth = depth + 1
+
+            # Compute the up-link for the new page: points back to current target_page
+            # (relative path from nodes/ directory where all generated pages live)
+            new_page_parent_href = _dest_href_from_target(target_page, REPO_ROOT, node_path)
 
             if dest_roll == 1 or deeper_depth >= depth_cap:
                 # Destination is a fresh content page
@@ -1056,6 +1197,7 @@ def branch_resolve(
                     posted_date=posted_date,
                     depth=deeper_depth,
                     orientation=orientation,
+                    parent_href=new_page_parent_href,  # v7: up-navigation
                 )
                 dest_type = 'content'
             else:
@@ -1065,6 +1207,7 @@ def branch_resolve(
                     entry_title=title,
                     posted_date=posted_date,
                     depth=deeper_depth,
+                    parent_href=new_page_parent_href,  # v7: up-navigation
                 )
                 dest_type = 'node'
 
@@ -1097,11 +1240,18 @@ def branch_resolve(
             log_record['dest_roll'] = dest_roll
             summary.append(
                 f'  depth={depth}  LINK  → nodes/{node_slug}.html  ({dest_type})'
-                f'  pos={cascade_pos}  orient={orientation}  insert_idx={ins_idx}/{n_existing}'
+                f'  pos={cascade_pos}  orient={orientation}  insert={ins_zone}@{ins_idx}/{n_existing}'
             )
 
             # If destination is a node (junction), recursively plant the content there
             if dest_type == 'node':
+                # Children of node_path will also live in nodes/, so their parent href
+                # is computed as: from nodes/<child>.html back to nodes/<node_path>.html
+                # = ../nodes/<node_path.name>  (up from nodes/ then back into nodes/)
+                # This is what _dest_href_from_target returns when both are in nodes/.
+                recursive_parent_href = _dest_href_from_target(node_path, REPO_ROOT, node_path)
+                # _dest_href_from_target(node_path, REPO_ROOT, node_path) returns '../nodes/<name>'
+                # which is correct for a sibling in nodes/ navigating up to this node.
                 branch_resolve(
                     entry_id=entry_id,
                     title=title,
@@ -1125,6 +1275,7 @@ def branch_resolve(
                     summary=summary,
                     is_root=False,
                     orientation=orientation, # propagate from root roll
+                    parent_href=recursive_parent_href,  # v7: up-nav for children of this node
                 )
 
     log_entry(branch_log, log_record)
@@ -1134,7 +1285,7 @@ def branch_resolve(
 
 def main() -> int:
     p = argparse.ArgumentParser(
-        description='Branching publish engine for bloodinthewire (v5).',
+        description='Branching publish engine for bloodinthewire (v7).',
     )
     p.add_argument('--title',                required=True,  help='Entry title')
     p.add_argument('--teaser',               required=True,  help='One-line teaser')
@@ -1224,6 +1375,7 @@ def main() -> int:
         summary=summary,
         is_root=True,
         orientation=None,  # let it roll fresh
+        parent_href='../index.html',  # root invocations parent is always index
     )
 
     save_branch_log(branch_log)
@@ -1232,20 +1384,22 @@ def main() -> int:
     last = branch_log['entries'][-1]
     orient  = last.get('orientation', 'unknown')
     ins_idx = last.get('insertion_index', 'unknown')
+    ins_zone = last.get('insertion_zone', 'unknown')
     n_exist = last.get('n_existing_at_publish', 'unknown')
     action  = last.get('action', 'unknown')
     img_src = last.get('image_source', 'unknown')
     img_blk = last.get('image_blocked', False)
 
     print()
-    print('branch_publish v4 complete')
+    print('branch_publish v7 complete')
     print('=' * 56)
     print(f'  entry:                {args.title}')
     print(f'  depth_cap:            {args.depth_cap}')
     print(f'  orientation:          {orient}')
-    print(f'  insertion_index:      {ins_idx}  (out of {n_exist} existing blocks)')
+    print(f'  insertion_roll:       {ins_zone} -> index {ins_idx}  (out of {n_exist} existing blocks)')
     print(f'  image_source:         {img_src}{"  [BLOCKED at this depth]" if img_blk else ""}')
     print(f'  convergence:          {"disabled (--no-convergence)" if args.no_convergence else f"threshold={args.convergence_threshold}"}')
+    print(f'  depth_progression:    70/30->60/40->50/50 (gate applied at depth>=1)')
     print(f'  branch log:           {BRANCH_LOG.relative_to(REPO_ROOT)}')
     print()
     print('  branch path:')

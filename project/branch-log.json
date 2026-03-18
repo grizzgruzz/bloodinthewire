@@ -163,6 +163,24 @@
       "convergence": true,
       "convergence_score": 1,
       "convergence_threshold": 1
+    },
+    {
+      "entry_id": "arrow-keeps-pointing-left",
+      "title": "Arrow Keeps Pointing Left",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "vertical",
+      "insertion_index": 7,
+      "insertion_zone": "bottom",
+      "n_existing_at_publish": 7,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-18T21:08:15Z",
+      "posted_date": "2026-03-18",
+      "image_source": "library",
+      "image_blocked": false,
+      "image_web_path": "",
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }

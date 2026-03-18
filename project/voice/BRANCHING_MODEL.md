@@ -1,6 +1,6 @@
 # BLOODINTHEWIRE — Branching Publish Model
 
-Version: v3
+Version: v7
 Status: Canon
 
 ---
@@ -115,13 +115,80 @@ publish(post)
 
 ## Depth Cap
 
-Default: **5 levels**
+Default: **30 levels**
 
 At depth cap, the engine always treats the roll as 1 (inline), so the
 content always lands somewhere readable regardless of luck. The cap is
-a soft safeguard, not a creative boundary.
+a hard safety ceiling — set intentionally high to allow deep trees while
+preventing runaway infinite recursion in edge cases.
 
 Set a different cap with `--depth-cap N` when calling `branch_publish.py`.
+
+---
+
+## Depth Progression Weighting (v7)
+
+When roll=0 (link) at **depth >= 1**, a probability gate controls whether
+the convergence check (link-out to an existing page) is even attempted.
+
+If the gate says **new page**, convergence is skipped and a fresh page is
+always created (no reuse).  This ensures deep trees grow new branches with
+higher probability at shallower depths, then equalise deeper down.
+
+| Depth | P(new page) | P(allow convergence) |
+|-------|-------------|----------------------|
+| 1     | 70%         | 30%                  |
+| 2     | 60%         | 40%                  |
+| ≥ 3   | 50%         | 50%                  |
+
+At **depth = 0** (surface / front page), the gate is **not applied**.
+Convergence runs as normal (purely relevance-score driven).
+
+The gate roll and probability are logged as `depth_gate_roll`,
+`depth_gate_p_new`, and `depth_gate_blocked_convergence` in branch-log.json.
+
+---
+
+## Static Navigation Semantics (v7 — House-of-Leaves feel)
+
+All generated junction nodes and content pages now include **static
+up-navigation affordances**:
+
+- **Header**: a `[up] return to parent` link pointing to the page that
+  spawned the current node.
+- **Footer**: same up-link repeated; if the parent is not root, a separate
+  `[home] return to entrypoint` link to `../index.html` is also included.
+- **Root invocations** (depth=0 → nodes spawned at depth=1): parent link
+  points to `index.html`.
+- **Deeper nodes** (depth>=2): parent link points to the actual spawning
+  node page (not just index).
+
+These are static links only — no JavaScript, no mutation.  Terminal content
+pages (no outbound thread links) always provide at minimum a back/parent link
+and a home link.
+
+This creates the navigational topology described by House of Leaves — you
+can always find your way back, but the path may be long.
+
+---
+
+## Cron Orchestration (v7)
+
+`cron_publish.py` wraps the full pipeline for unattended runs:
+
+1. **Run gate** (default 50%): decide whether to publish at all on this tick.
+2. **Media gate** (default 70%): decide whether the surface post includes media.
+   - If yes: call `select_asset.py --level surface` (incoming > library priority).
+   - If no assets available: degrade gracefully to text-only.
+3. Invoke `branch_publish.py` with resolved args.
+4. Emit a compact trace line to stdout and append to `project/cron-trace.log`.
+
+Trace line format:
+  SKIP  ts=...  run_gate_roll=...  p_run=...
+  PUB   ts=...  run_gate_roll=...  media=yes  img_src=...  title=...
+  PUB   ts=...  run_gate_roll=...  media=no   title=...
+
+See `cron_publish.py` docstring for full usage and cron wiring examples.
 
 ---
 
