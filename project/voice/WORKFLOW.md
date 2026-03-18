@@ -90,7 +90,8 @@ If the body text of a post needs to change, that change goes back to
  │  6. REVIEW + PUBLISH                                             │
  │     • Review content/drafts/<slug>.md for tone and accuracy      │
  │     • If prose needs changing → return to wirevoice-core (step 4)│
- │     • Copy HTML fragment to fragments/ and wire into index.html  │
+ │     • Copy HTML fragment to fragments/                           │
+│     • Use scripts/publish_to_site.py for newest-first index insert│
  │     • Move markdown to content/entries/ and mark published       │
  │     • git add new files; review; commit when satisfied           │
  └──────────────────────────────────────────────────────────────────┘
@@ -118,6 +119,15 @@ draft=voice/requests/draft-$(date +%Y%m%d-%H%M%S).txt
 python scripts/generate_post.py \
     --voice-draft-file "$draft" \
     --image-web-path "$path"
+
+# 6. Publish newest-first in index
+python scripts/publish_to_site.py \
+    --title "<entry title>" \
+    --timestamp "<HH:MM|OMIT>" \
+    --teaser "<one-line teaser>" \
+    --fragment-href "fragments/<entry-file>.html" \
+    --posted-date "$(date +%F)" \
+    --links-note "<short note>"
 ```
 
 ---
@@ -157,7 +167,7 @@ Consult `VOICE_BIBLE.md` for full guidance. Key reminders:
 - No em dashes. No emojis.
 - First-person narrator is certain. No hedging on observed events.
 - Escalation is non-linear. Vary motifs across posts.
-- recurring names and references should persist across sessions.
+- recurring generic references should persist across sessions.
 
 Build continuity by noting recurring elements in `--seed-context` when
 calling `build_voice_request.py`.
