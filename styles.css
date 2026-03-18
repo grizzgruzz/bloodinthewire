@@ -58,3 +58,23 @@ marquee {
   border-bottom: 1px solid #2a2a2a;
   padding: 6px 0;
 }
+
+.evidence {
+  margin: 14px 0;
+  border: 1px dashed #3a3a3a;
+  padding: 8px;
+  background: #0a0a0a;
+}
+
+.evidence img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #1f1f1f;
+}
+
+.evidence figcaption {
+  margin-top: 6px;
+  color: #9a9a9a;
+  font-size: .85rem;
+}
