@@ -166,6 +166,51 @@ def append_trace(line: str) -> None:
               file=sys.stderr)
 
 
+def auto_commit_push(commit_message: str) -> tuple[bool, str]:
+    """
+    Stage site/runtime outputs, commit if anything changed, and push.
+
+    Returns: (ok, status_text)
+    """
+    add_cmd = [
+        'git', 'add',
+        'index.html',
+        'fragments',
+        'nodes',
+        'project/branch-log.json',
+        'project/cron-trace.log',
+        'project/assets/web',
+        'project/assets/published',
+        'project/assets/library',
+    ]
+    add = subprocess.run(add_cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
+    if add.returncode != 0:
+        return False, f'git_add_failed:{add.stderr.strip() or add.stdout.strip()}'
+
+    has_changes = subprocess.run(
+        ['git', 'diff', '--cached', '--quiet'],
+        cwd=str(REPO_ROOT),
+    )
+    if has_changes.returncode == 0:
+        return True, 'nothing_to_commit'
+
+    commit = subprocess.run(
+        ['git', 'commit', '-m', commit_message],
+        cwd=str(REPO_ROOT), capture_output=True, text=True,
+    )
+    if commit.returncode != 0:
+        return False, f'git_commit_failed:{commit.stderr.strip() or commit.stdout.strip()}'
+
+    push = subprocess.run(
+        ['git', 'push'],
+        cwd=str(REPO_ROOT), capture_output=True, text=True,
+    )
+    if push.returncode != 0:
+        return False, f'git_push_failed:{push.stderr.strip() or push.stdout.strip()}'
+
+    return True, 'pushed'
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -202,6 +247,8 @@ def main() -> int:
                         help='Force media gate hit.')
     parser.add_argument('--no-media',          action='store_true',
                         help='Force media gate miss (publish text-only).')
+    parser.add_argument('--auto-push',         action='store_true',
+                        help='After successful publish, auto-commit and push site/runtime outputs.')
     args = parser.parse_args()
 
     now = ts_utc()
@@ -223,6 +270,11 @@ def main() -> int:
         )
         print(trace)
         append_trace(trace)
+        if args.auto_push:
+            ok, push_state = auto_commit_push(f'Auto publish tick: skipped {now}')
+            print(f'PUSH  ts={ts_utc()}  status={push_state}')
+            if not ok:
+                return 1
         return 0
 
     # ── GATE 2: MEDIA GATE (depth=0 surface only) ─────────────────────────────
@@ -408,6 +460,16 @@ def main() -> int:
     )
     print(trace)
     append_trace(trace)
+
+    if args.auto_push:
+        safe_title = ''.join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()[:80]
+        commit_msg = f'Auto publish: {posted_date} - {safe_title or "untitled"}'
+        ok, push_state = auto_commit_push(commit_msg)
+        push_trace = f'PUSH  ts={ts_utc()}  status={push_state}'
+        print(push_trace)
+        if not ok:
+            return 1
+
     return 0
 
 
