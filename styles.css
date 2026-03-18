@@ -107,11 +107,17 @@ a:hover {
   color: #fff;
 }
 
+.hero-pair {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+  margin: 4px 0 14px;
+}
+
 .companion-panel {
-  float: left;
-  width: calc(100% - 315px);
+  flex: 1 1 auto;
   min-height: 420px;
-  margin: 4px 18px 14px 0;
+  margin: 0;
   padding: 10px 12px 12px;
   background: rgba(14,14,14,.86);
   border: 1px dashed #3a3a3a;
@@ -144,9 +150,8 @@ a:hover {
 }
 
 .wanted-panel {
-  float: right;
-  width: 285px;
-  margin: 4px 0 14px 18px;
+  flex: 0 0 285px;
+  margin: 0;
   padding: 10px 11px 12px;
   background: #d6cdbb;
   color: #1a1512;
@@ -275,13 +280,20 @@ marquee {
 }
 
 @media (max-width: 780px) {
+  .hero-pair {
+    display: block;
+  }
+
   .wanted-panel,
   .companion-panel {
-    float: none;
     width: auto;
     min-height: 0;
     margin-left: 0;
     margin-right: 0;
+  }
+
+  .wanted-panel {
+    margin-top: 12px;
   }
 
   .companion-figure {
