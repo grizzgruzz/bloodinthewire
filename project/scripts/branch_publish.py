@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-branch_publish.py  v1
+branch_publish.py  v2
 =====================
 Branching-publish engine for bloodinthewire.
 
@@ -19,6 +19,14 @@ flip, stored for reproducibility) whether the content appears:
 
 Rolls are saved in project/branch-log.json so pages are never re-rolled.
 
+v2 additions
+------------
+  • ORIENTATION roll (vertical|horizontal): stored alongside branch roll.
+    Horizontal cards display image and text side-by-side.
+  • INSERTION POSITION roll: new cards land at any position within the
+    CASCADE block, not always at the top. The index is stored for
+    reproducibility. 0 = before first block, N = after Nth block.
+
 USAGE
 -----
   python branch_publish.py \\
@@ -31,7 +39,9 @@ USAGE
       [--image-web-path project/assets/web/img.jpg] \\
       [--target-page index.html]            # defaults to index.html
       [--depth-cap 5]                       # max branching depth (default 5)
-      [--force-roll 1]                      # override roll (testing only)
+      [--force-roll 1]                      # override branch roll (testing only)
+      [--force-orientation vertical]        # override orientation (testing only)
+      [--force-insertion-index 0]           # override insertion index (testing only)
       [--links-note "short note"]
 
 OUTPUTS (depending on roll results)
@@ -47,6 +57,10 @@ DESIGN NOTES
   - Cascade position (cp-a…cp-g) cycles deterministically by entry count.
   - Node pages accumulate links and are themselves valid target pages for
     future deeper posts. The spiderweb grows organically.
+  - Orientation (vertical|horizontal) is rolled once per root publish call
+    and stored permanently in branch-log.json. It is not re-derived.
+  - Insertion index is rolled once and stored. 0 = top, N = after Nth
+    existing cascade block. Ensures reproducible page structure.
   - This script uses stdlib only (no third-party deps).
 """
 
@@ -71,6 +85,7 @@ BRANCH_LOG   = REPO_ROOT / 'project' / 'branch-log.json'
 
 DEPTH_CAP_DEFAULT = 5
 CASCADE_POSITIONS = ['cp-a', 'cp-b', 'cp-c', 'cp-d', 'cp-e', 'cp-f', 'cp-g']
+ORIENTATIONS      = ['vertical', 'horizontal']
 
 
 # ── Branch log ────────────────────────────────────────────────────────────────
@@ -81,7 +96,7 @@ def load_branch_log() -> dict:
             return json.loads(BRANCH_LOG.read_text(encoding='utf-8'))
         except Exception:
             pass
-    return {'entries': [], 'meta': {'version': 1}}
+    return {'entries': [], 'meta': {'version': 2}}
 
 
 def save_branch_log(log: dict) -> None:
@@ -108,6 +123,44 @@ def pick_cascade_pos(page_path: Path) -> str:
         return CASCADE_POSITIONS[0]
 
 
+def count_cascade_blocks(page_path: Path) -> int:
+    """Return number of cascade-block sections in the CASCADE region of a page."""
+    try:
+        src = page_path.read_text(encoding='utf-8')
+        cascade_start = '<!-- CASCADE:START -->'
+        cascade_end   = '<!-- CASCADE:END -->'
+        if cascade_start not in src:
+            return 0
+        start = src.index(cascade_start) + len(cascade_start)
+        end   = src.index(cascade_end) if cascade_end in src else len(src)
+        region = src[start:end]
+        return len(re.findall(r'<section\s+class="cascade-block', region))
+    except Exception:
+        return 0
+
+
+# ── Orientation + insertion rolls ─────────────────────────────────────────────
+
+def roll_orientation(force: str | None = None) -> str:
+    """Roll vertical or horizontal orientation. Stored once, never re-rolled."""
+    if force is not None and force in ORIENTATIONS:
+        return force
+    return random.choice(ORIENTATIONS)
+
+
+def roll_insertion_index(n_existing: int, force: int | None = None) -> int:
+    """
+    Roll an insertion index in [0, n_existing].
+    0 = before first block (top), N = after Nth block.
+    Stored once; reproducible from branch-log.
+    """
+    if force is not None:
+        return max(0, min(int(force), n_existing))
+    if n_existing <= 0:
+        return 0
+    return random.randint(0, n_existing)
+
+
 # ── HTML builders ─────────────────────────────────────────────────────────────
 
 def make_rich_card(
@@ -122,8 +175,15 @@ def make_rich_card(
     cascade_pos: str,
     depth: int,
     roll_seed: int,
+    orientation: str = 'vertical',
 ) -> str:
-    """Rich inline card — full teaser or body visible."""
+    """Rich inline card — full teaser or body visible.
+    
+    orientation='vertical'   → stacked layout (image below text, default)
+    orientation='horizontal' → side-by-side layout (image left, text right)
+    """
+    orient_class = f'cascade-orient-{orientation}'
+
     ts_line = ''
     if timestamp:
         ts_line = f'      <p><strong>{_html.escape(timestamp)}</strong> — {_html.escape(teaser)}</p>\n'
@@ -145,21 +205,58 @@ def make_rich_card(
     if fragment_href:
         link_line = f'      <p><a href="{_html.escape(fragment_href)}">open entry</a></p>\n'
 
-    return (
-        f'    <!-- branch: inline  depth={depth}  seed={roll_seed} -->\n'
-        f'    <section class="cascade-block cascade-rich {cascade_pos}"'
-        f' data-entry="{_html.escape(entry_id)}"'
-        f' data-type="inline"'
-        f' data-depth="{depth}"'
-        f' data-branch-seed="{roll_seed}">\n'
-        f'      <h2>{_html.escape(title)}</h2>\n'
-        f'{ts_line}'
-        f'{body_section}'
-        f'{img_section}'
-        f'{link_line}'
-        f'      <p class="stamp">posted: {_html.escape(posted_date)}</p>\n'
-        f'    </section>\n\n'
-    )
+    stamp_line = f'      <p class="stamp">posted: {_html.escape(posted_date)}</p>\n'
+
+    if orientation == 'horizontal' and image_web_path:
+        # Side-by-side: image left, text content right
+        inner = (
+            f'      <div class="horiz-media">\n'
+            f'        <figure class="evidence">'
+            f'<img src="{_html.escape(image_web_path)}" alt="evidence"></figure>\n'
+            f'      </div>\n'
+            f'      <div class="horiz-text">\n'
+            f'        <h2>{_html.escape(title)}</h2>\n'
+        )
+        if timestamp:
+            inner += f'        <p><strong>{_html.escape(timestamp)}</strong> — {_html.escape(teaser)}</p>\n'
+        else:
+            inner += f'        <p>{_html.escape(teaser)}</p>\n'
+        if body_html:
+            inner += f'        <div class="wire-body">{body_html}</div>\n'
+        if fragment_href:
+            inner += f'        <p><a href="{_html.escape(fragment_href)}">open entry</a></p>\n'
+        inner += f'        <p class="stamp">posted: {_html.escape(posted_date)}</p>\n'
+        inner += '      </div>\n'
+
+        return (
+            f'    <!-- branch: inline  depth={depth}  seed={roll_seed}  orient={orientation} -->\n'
+            f'    <section class="cascade-block cascade-rich {cascade_pos} {orient_class}"'
+            f' data-entry="{_html.escape(entry_id)}"'
+            f' data-type="inline"'
+            f' data-depth="{depth}"'
+            f' data-branch-seed="{roll_seed}"'
+            f' data-orientation="{orientation}">\n'
+            f'{inner}'
+            f'    </section>\n\n'
+        )
+    else:
+        # Vertical (default): stacked layout
+        return (
+            f'    <!-- branch: inline  depth={depth}  seed={roll_seed}  orient={orientation} -->\n'
+            f'    <section class="cascade-block cascade-rich {cascade_pos} {orient_class}"'
+            f' data-entry="{_html.escape(entry_id)}"'
+            f' data-type="inline"'
+            f' data-depth="{depth}"'
+            f' data-branch-seed="{roll_seed}"'
+            f' data-orientation="{orientation}">\n'
+            f'      <h2>{_html.escape(title)}</h2>\n'
+            f'{ts_line}'
+            f'{body_section}'
+            f'{img_section}'
+            f'{link_line}'
+            f'{stamp_line}'
+            f'    </section>\n\n'
+        )
 
 
 def make_link_card(
@@ -172,17 +269,20 @@ def make_link_card(
     depth: int,
     roll_seed: int,
     is_node: bool = False,
+    orientation: str = 'vertical',
 ) -> str:
     """Lean link card — minimal, just label + hyperlink."""
-    card_class = 'cascade-node' if is_node else 'cascade-link'
-    link_text  = 'open node' if is_node else 'open entry'
+    card_class  = 'cascade-node' if is_node else 'cascade-link'
+    link_text   = 'open node' if is_node else 'open entry'
+    orient_class = f'cascade-orient-{orientation}'
     return (
-        f'    <!-- branch: link  depth={depth}  seed={roll_seed} -->\n'
-        f'    <section class="cascade-block {card_class} {cascade_pos}"'
+        f'    <!-- branch: link  depth={depth}  seed={roll_seed}  orient={orientation} -->\n'
+        f'    <section class="cascade-block {card_class} {cascade_pos} {orient_class}"'
         f' data-entry="{_html.escape(entry_id)}"'
         f' data-type="link"'
         f' data-depth="{depth}"'
-        f' data-branch-seed="{roll_seed}">\n'
+        f' data-branch-seed="{roll_seed}"'
+        f' data-orientation="{orientation}">\n'
         f'      <h2>{_html.escape(title)}</h2>\n'
         f'      <span class="lean-link">'
         f'<a href="{_html.escape(dest_href)}">{link_text}</a>'
@@ -253,6 +353,7 @@ def make_content_page(
     timestamp: str,
     posted_date: str,
     depth: int,
+    orientation: str = 'vertical',
 ) -> str:
     """Generate a fresh content page (roll=1 at deeper depth)."""
     ts_block = ''
@@ -289,7 +390,7 @@ def make_content_page(
   <div class="noise"></div>
   <main class="container">
     <header>
-      <p class="stamp">CONTENT NODE // depth={depth}</p>
+      <p class="stamp">CONTENT NODE // depth={depth} // orient={orientation}</p>
       <h2>{_html.escape(entry_title)}</h2>
       <hr />
     </header>
@@ -308,14 +409,51 @@ def make_content_page(
 
 # ── Page insertion helpers ─────────────────────────────────────────────────────
 
-def insert_cascade_card(page_path: Path, card_html: str) -> None:
-    """Insert a cascade card at the top of CASCADE:START block."""
+def insert_cascade_card(page_path: Path, card_html: str, insertion_index: int = 0) -> None:
+    """
+    Insert a cascade card at a specific position within the CASCADE:START/END block.
+
+    insertion_index=0 → before the first existing cascade block (top of stack).
+    insertion_index=N → after the Nth existing cascade block.
+
+    If insertion_index >= number of existing blocks, appends at the bottom.
+    The index is rolled once at publish time and stored in branch-log.json.
+    """
     src = page_path.read_text(encoding='utf-8')
-    marker = '    <!-- CASCADE:START -->'
-    if marker not in src:
+    cascade_start_marker = '<!-- CASCADE:START -->'
+    cascade_end_marker   = '<!-- CASCADE:END -->'
+
+    if cascade_start_marker not in src:
         raise RuntimeError(f"No CASCADE:START marker found in {page_path}")
-    insert_pos = src.index(marker) + len(marker) + 1
-    src = src[:insert_pos] + '\n' + card_html + src[insert_pos:]
+
+    # Locate the cascade region bounds in src
+    start_marker_end = src.index(cascade_start_marker) + len(cascade_start_marker)
+    end_marker_start = src.index(cascade_end_marker) if cascade_end_marker in src else len(src)
+
+    cascade_region = src[start_marker_end:end_marker_start]
+
+    # Find all <section class="cascade-block..." in the region
+    block_pattern = re.compile(
+        r'(<section\s+class="cascade-block[^>]*>.*?</section>)',
+        re.DOTALL,
+    )
+    matches = list(block_pattern.finditer(cascade_region))
+
+    if insertion_index <= 0 or not matches:
+        # Insert at the very top of the cascade region (after marker line)
+        insert_abs = start_marker_end
+        # Skip past the immediately following newline(s)
+        while insert_abs < end_marker_start and src[insert_abs] in ('\n', '\r'):
+            insert_abs += 1
+        src = src[:insert_abs] + '\n' + card_html + src[insert_abs:]
+    else:
+        # Insert after the (insertion_index)-th block (1-based clamp to count)
+        idx = min(insertion_index, len(matches)) - 1
+        match = matches[idx]
+        # Absolute position in src = base + match.end()
+        abs_insert_pos = start_marker_end + match.end()
+        src = src[:abs_insert_pos] + '\n\n' + card_html + src[abs_insert_pos:]
+
     page_path.write_text(src, encoding='utf-8')
 
 
@@ -365,35 +503,55 @@ def branch_resolve(
     depth: int,
     depth_cap: int,
     force_roll: int | None,
+    force_orientation: str | None,
+    force_insertion_index: int | None,
     links_note: str,
     branch_log: dict,
     summary: list[str],
     is_root: bool = True,
+    # orientation is rolled once at root and propagated down
+    orientation: str | None = None,
 ) -> None:
     """
     Recursively resolve branch decisions and write pages.
 
     At each call:
       - Roll 0/1 (or use depth_cap override)
+      - Roll orientation (vertical|horizontal) — only at root, then propagated
+      - Roll insertion index — once per call, stored in log
       - Roll=1: insert rich card inline on target_page
       - Roll=0: insert link card on target_page, create destination page,
                 recurse into destination
 
-    Rolls are stored in branch_log for reproducibility.
+    All rolls are stored in branch_log for reproducibility.
     """
     # At cap → force inline
     effective_roll = 1 if depth >= depth_cap else roll(force_roll if is_root else None)
 
+    # Orientation: roll once at root, propagate to recursions
+    if orientation is None:
+        orientation = roll_orientation(force_orientation if is_root else None)
+
+    # Count existing blocks on this page to determine insertion index range
+    n_existing = count_cascade_blocks(target_page)
+    ins_idx = roll_insertion_index(
+        n_existing,
+        force_insertion_index if is_root else None,
+    )
+
     cascade_pos = pick_cascade_pos(target_page)
 
     log_record: dict = {
-        'entry_id':      entry_id,
-        'title':         title,
-        'depth':         depth,
-        'roll':          effective_roll,
-        'target_page':   str(target_page.relative_to(REPO_ROOT)),
-        'timestamp_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-        'posted_date':   posted_date,
+        'entry_id':        entry_id,
+        'title':           title,
+        'depth':           depth,
+        'roll':            effective_roll,
+        'orientation':     orientation,
+        'insertion_index': ins_idx,
+        'n_existing_at_publish': n_existing,
+        'target_page':    str(target_page.relative_to(REPO_ROOT)),
+        'timestamp_utc':  time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'posted_date':    posted_date,
     }
 
     if effective_roll == 1:
@@ -410,17 +568,18 @@ def branch_resolve(
             cascade_pos=cascade_pos,
             depth=depth,
             roll_seed=effective_roll,
+            orientation=orientation,
         )
-        insert_cascade_card(target_page, card)
+        insert_cascade_card(target_page, card, insertion_index=ins_idx)
 
         frag_label = Path(fragment_href).stem if fragment_href else entry_id
         insert_links_entry(target_page, fragment_href or '#', frag_label, links_note)
 
-        log_record['action']  = 'inline'
-        log_record['page']    = str(target_page.relative_to(REPO_ROOT))
+        log_record['action'] = 'inline'
+        log_record['page']   = str(target_page.relative_to(REPO_ROOT))
         summary.append(
             f'  depth={depth}  INLINE → {target_page.relative_to(REPO_ROOT)}'
-            f'  pos={cascade_pos}'
+            f'  pos={cascade_pos}  orient={orientation}  insert_idx={ins_idx}/{n_existing}'
         )
 
     else:
@@ -445,6 +604,7 @@ def branch_resolve(
                 timestamp=timestamp,
                 posted_date=posted_date,
                 depth=deeper_depth,
+                orientation=orientation,
             )
             dest_type = 'content'
         else:
@@ -473,8 +633,9 @@ def branch_resolve(
             depth=depth,
             roll_seed=effective_roll,
             is_node=(dest_type == 'node'),
+            orientation=orientation,
         )
-        insert_cascade_card(target_page, card)
+        insert_cascade_card(target_page, card, insertion_index=ins_idx)
         insert_links_entry(target_page, node_href, node_slug, links_note)
 
         log_record['action']    = 'link'
@@ -482,7 +643,8 @@ def branch_resolve(
         log_record['dest_type'] = dest_type
         log_record['dest_roll'] = dest_roll
         summary.append(
-            f'  depth={depth}  LINK  → {node_href}  ({dest_type})  pos={cascade_pos}'
+            f'  depth={depth}  LINK  → {node_href}  ({dest_type})'
+            f'  pos={cascade_pos}  orient={orientation}  insert_idx={ins_idx}/{n_existing}'
         )
 
         # If destination is a node (junction), recursively plant the content there
@@ -499,11 +661,14 @@ def branch_resolve(
                 target_page=node_path,
                 depth=deeper_depth,
                 depth_cap=depth_cap,
-                force_roll=None,  # only override at root
+                force_roll=None,         # only override at root
+                force_orientation=None,
+                force_insertion_index=None,
                 links_note=links_note,
                 branch_log=branch_log,
                 summary=summary,
                 is_root=False,
+                orientation=orientation, # propagate from root roll
             )
 
     log_entry(branch_log, log_record)
@@ -513,22 +678,25 @@ def branch_resolve(
 
 def main() -> int:
     p = argparse.ArgumentParser(
-        description='Branching publish engine for bloodinthewire.',
+        description='Branching publish engine for bloodinthewire (v2).',
     )
-    p.add_argument('--title',          required=True,  help='Entry title (e.g. "entry_0007 :: something")')
-    p.add_argument('--teaser',         required=True,  help='One-line teaser')
-    p.add_argument('--posted-date',    required=True,  help='YYYY-MM-DD')
-    p.add_argument('--fragment-href',  default='',     help='Relative href to fragment page (optional)')
-    p.add_argument('--timestamp',      default='',     help='HH:MM timestamp or omit')
-    p.add_argument('--body-file',      default='',     help='Path to HTML body fragment file (optional)')
-    p.add_argument('--image-web-path', default='',     help='Relative path to web-ready image (optional)')
-    p.add_argument('--target-page',    default='',     help='Target page to insert into (default: index.html)')
-    p.add_argument('--depth-cap',      type=int, default=DEPTH_CAP_DEFAULT,
-                                                       help=f'Max branch depth (default: {DEPTH_CAP_DEFAULT})')
-    p.add_argument('--force-roll',     type=int, default=None,
-                                                       help='Force a specific roll value 0|1 (for testing)')
-    p.add_argument('--links-note',     default='new entry',
-                                                       help='Short annotation for links list')
+    p.add_argument('--title',                required=True,  help='Entry title')
+    p.add_argument('--teaser',               required=True,  help='One-line teaser')
+    p.add_argument('--posted-date',          required=True,  help='YYYY-MM-DD')
+    p.add_argument('--fragment-href',        default='',     help='Relative href to fragment page')
+    p.add_argument('--timestamp',            default='',     help='HH:MM timestamp or omit')
+    p.add_argument('--body-file',            default='',     help='Path to HTML body fragment file')
+    p.add_argument('--image-web-path',       default='',     help='Relative path to web-ready image')
+    p.add_argument('--target-page',          default='',     help='Target page (default: index.html)')
+    p.add_argument('--depth-cap',            type=int, default=DEPTH_CAP_DEFAULT)
+    p.add_argument('--force-roll',           type=int, default=None,
+                                             help='Force branch roll 0|1 (testing only)')
+    p.add_argument('--force-orientation',    default=None,
+                                             choices=['vertical', 'horizontal'],
+                                             help='Force orientation (testing only)')
+    p.add_argument('--force-insertion-index', type=int, default=None,
+                                             help='Force insertion index (testing only)')
+    p.add_argument('--links-note',           default='new entry')
 
     args = p.parse_args()
 
@@ -550,8 +718,8 @@ def main() -> int:
         else:
             print(f'WARNING: body file not found: {bp}', file=sys.stderr)
 
-    entry_id    = make_entry_id(args.title)
-    branch_log  = load_branch_log()
+    entry_id   = make_entry_id(args.title)
+    branch_log = load_branch_log()
     summary: list[str] = []
 
     branch_resolve(
@@ -567,20 +735,31 @@ def main() -> int:
         depth=0,
         depth_cap=args.depth_cap,
         force_roll=args.force_roll,
+        force_orientation=args.force_orientation,
+        force_insertion_index=args.force_insertion_index,
         links_note=args.links_note,
         branch_log=branch_log,
         summary=summary,
         is_root=True,
+        orientation=None,  # let it roll fresh
     )
 
     save_branch_log(branch_log)
 
+    # Pull the orientation and insertion from the last log entry
+    last = branch_log['entries'][-1]
+    orient = last.get('orientation', 'unknown')
+    ins_idx = last.get('insertion_index', 'unknown')
+    n_exist = last.get('n_existing_at_publish', 'unknown')
+
     print()
-    print('branch_publish complete')
+    print('branch_publish v2 complete')
     print('=' * 48)
-    print(f'  entry:       {args.title}')
-    print(f'  depth_cap:   {args.depth_cap}')
-    print(f'  branch log:  {BRANCH_LOG.relative_to(REPO_ROOT)}')
+    print(f'  entry:           {args.title}')
+    print(f'  depth_cap:       {args.depth_cap}')
+    print(f'  orientation:     {orient}')
+    print(f'  insertion_index: {ins_idx}  (out of {n_exist} existing blocks)')
+    print(f'  branch log:      {BRANCH_LOG.relative_to(REPO_ROOT)}')
     print()
     print('  branch path:')
     for line in summary:

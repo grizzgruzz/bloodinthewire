@@ -45,6 +45,20 @@
       "timestamp_utc": "2026-03-17T00:00:00Z",
       "posted_date": "2026-03-17",
       "note": "Pre-branching post; deterministic assignment on model introduction."
+    },
+    {
+      "entry_id": "entry-0004-orbit-map-or-something-like-i",
+      "title": "entry_0004 :: orbit map, or something like it",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "horizontal",
+      "insertion_index": 0,
+      "n_existing_at_publish": 3,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-18T05:47:26Z",
+      "posted_date": "2026-03-17",
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }

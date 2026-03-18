@@ -1,6 +1,6 @@
 # BLOODINTHEWIRE — Branching Publish Model
 
-Version: v1
+Version: v2
 Status: Canon
 
 ---
@@ -119,16 +119,36 @@ decisions determine page structure permanently.
 
 ## CSS Card Types
 
-| Class              | Meaning                                      |
-|--------------------|----------------------------------------------|
-| `cascade-rich`     | Inline post — full teaser/body visible       |
-| `cascade-link`     | Lean link card — minimal, points elsewhere   |
-| `cascade-node`     | Lean card pointing to a junction node        |
-| `cp-a` … `cp-g`    | Stagger positions, cycle based on post count |
+| Class                      | Meaning                                       |
+|----------------------------|-----------------------------------------------|
+| `cascade-rich`             | Inline post — full teaser/body visible        |
+| `cascade-link`             | Lean link card — minimal, points elsewhere    |
+| `cascade-node`             | Lean card pointing to a junction node         |
+| `cp-a` … `cp-g`            | Stagger positions, cycle based on post count  |
+| `cascade-orient-vertical`  | Stacked layout (image below text, default)    |
+| `cascade-orient-horizontal`| Side-by-side layout (image left, text right)  |
 
 Stagger positions are assigned deterministically by counting existing
 cascade blocks on the target page (mod 7). This means the visual rhythm
 is consistent and not re-derived at render time.
+
+## v2 Additions: Orientation + Insertion Index
+
+**Orientation roll** (stored as `orientation` in branch-log.json):
+- `vertical`   → stacked layout (default)
+- `horizontal` → image left, text right, side-by-side
+
+Rolled once at root publish time. Propagated to all recursive levels.
+Never re-derived from the log — it is stored permanently.
+
+**Insertion index** (stored as `insertion_index` in branch-log.json):
+- Controls WHERE in the CASCADE stack the new card lands.
+- `0` = before the first block (top of stack).
+- `N` = after the Nth existing cascade block.
+- Rolled uniformly over `[0, count_existing_blocks]`.
+- Stored with `n_existing_at_publish` for full reproducibility.
+
+Both values appear in `branch-log.json` on every entry from v2 onward.
 
 ---
 

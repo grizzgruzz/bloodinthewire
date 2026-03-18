@@ -357,6 +357,57 @@ a:hover {
   border-color: #3d3d3d;
 }
 
+/* ── ORIENTATION VARIANTS ─────────────────────────────────────────────── */
+/* Applied via data-orientation attr; class added by branch_publish.py v2  */
+
+/* Vertical (default): stacked image below text — no extra rules needed    */
+.cascade-orient-vertical {
+  /* inherits standard cascade-block layout */
+}
+
+/* Horizontal: image left, text right, side by side                        */
+.cascade-orient-horizontal {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.cascade-orient-horizontal .horiz-media {
+  flex: 0 0 220px;
+  max-width: 220px;
+}
+
+.cascade-orient-horizontal .horiz-media .evidence {
+  margin: 0;
+}
+
+.cascade-orient-horizontal .horiz-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cascade-orient-horizontal .horiz-text h2 {
+  margin-top: 0;
+}
+
+/* Horizontal link/node cards keep lean layout — just add a left accent    */
+.cascade-orient-horizontal.cascade-link,
+.cascade-orient-horizontal.cascade-node {
+  border-left: 3px solid #2a2a2a;
+}
+
+@media (max-width: 580px) {
+  .cascade-orient-horizontal {
+    flex-direction: column;
+  }
+  .cascade-orient-horizontal .horiz-media {
+    flex: none;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
 /* ── NODE PAGE STYLES ──────────────────────────────────────────────────── */
 /* Applied on generated nodes/*.html pages                                  */
 
