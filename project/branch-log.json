@@ -269,6 +269,24 @@
       "convergence": true,
       "convergence_score": 1,
       "convergence_threshold": 1
+    },
+    {
+      "entry_id": "the-leg-changed",
+      "title": "The Leg Changed",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "vertical",
+      "insertion_index": 10,
+      "insertion_zone": "bottom",
+      "n_existing_at_publish": 10,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-19T00:02:48Z",
+      "posted_date": "2026-03-18",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "",
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }

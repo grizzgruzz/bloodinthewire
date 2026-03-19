@@ -7,3 +7,4 @@ SKIP  ts=2026-03-18T22:00:10Z  run_gate_roll=0.8333  p_run=0.50
 DRY   ts=2026-03-18T23:20:09Z  run_gate_roll=0.2098  p_run=1.00  media_gate_roll=0.1957  p_media=0.70  media=yes (dry-run, would use incoming)  mode=auto-generate  depth_cap=30
 PUB   ts=2026-03-18T23:20:17Z  run_gate_roll=0.8333  p_run=1.00  media_gate_roll=0.2229  p_media=0.70  media=yes  img_src=incoming  img=3e581479-dab0-47a5-abc8-8dcb0b90f1eb_20260318-162017.png  title='Faked Bone'  depth_cap=30
 PUB   ts=2026-03-19T00:02:23Z  run_gate_roll=0.8386  p_run=0.50  media_gate_roll=0.5843  p_media=0.70  media=yes  img_src=incoming  img=11a704c6-925c-40c6-b640-c14f8ec0b4af_20260318-170223.png  title='Not Me. But Me.'  depth_cap=30
+PUB   ts=2026-03-19T00:02:38Z  run_gate_roll=0.0988  p_run=0.50  media_gate_roll=0.8145  p_media=0.70  media=no (media_gate=False)  title='The Leg Changed'  depth_cap=30
