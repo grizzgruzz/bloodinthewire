@@ -1058,6 +1058,25 @@
       "dest_roll": 1,
       "depth0_unique_branch": true,
       "depth0_convergence_blocked": "hard-rule: depth0 always creates unique destination"
+    },
+    {
+      "entry_id": "the-elephant-clock-isn-t-a-clock",
+      "title": "The Elephant Clock isn't a Clock",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "horizontal",
+      "insertion_index": 9,
+      "insertion_zone": "middle",
+      "n_existing_at_publish": 18,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-19T16:00:26Z",
+      "posted_date": "2026-03-19",
+      "image_source": "library",
+      "image_blocked": false,
+      "image_web_path": "",
+      "image_anti_reuse_applied": false,
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }

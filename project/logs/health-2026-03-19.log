@@ -1,25 +1,29 @@
 # bloodinthewire health report — 2026-03-19
-# generated: 2026-03-19T03:26:48Z
+# generated: 2026-03-19T06:30:04Z
 
 ## run stats
-  attempted:            7
-  published:            5
-  skipped:              2
+  attempted:            11
+  published:            7
+  skipped:              4
   errors:               0
   validation_failures:  0
 
 ## site growth
-  total pages:          40  (index=1, fragments=10, nodes=29)
-  new pages today:      4
+  total pages:          44  (index=1, fragments=10, nodes=33)
+  new pages today:      8
   tree max depth:       6
-  inline link count:    25
-  last modified:        nodes/node-the-feed-shows-retro-d2-20260318-194715.html
+  inline link count:    27
+  last modified:        fragments/frequency-note-03.html
 
 ## new pages today
   + fragments/not-me-but-me.html
   + fragments/same-place-same-time.html
   + nodes/node-signal-overlap-t-d1-20260318-192440.html
   + nodes/node-signal-overlap-t-d0-20260318-192440.html
+  + fragments/signal-test-inline.html
+  + nodes/node-the-white-truck-d1-20260319.html
+  + nodes/node-depth-zero-uniqu-d0-20260318-205253.html
+  + nodes/node-depth-zero-conve-d0-20260318-205305.html
 
 ## validation: OK (no failures)
 
@@ -31,3 +35,8 @@
   PUB   ts=2026-03-19T00:03:19Z  run_gate_roll=0.8441  p_run=0.50  media_gate_roll=0.7828  p_media=0.70  media=no (media_gate=False)  title='The Elephant Clock Timing'  depth_cap=30
   DRY   ts=2026-03-19T01:21:36Z  run_gate_roll=0.1995  p_run=1.00  media_gate_roll=0.6814  p_media=0.70  media=yes (dry-run, would use library)  mode=auto-generate  depth_cap=30
   DRY   ts=2026-03-19T01:22:09Z  run_gate_roll=0.5590  p_run=1.00  media_gate_roll=0.2342  p_media=0.70  media=yes (dry-run, would use library)  mode=auto-generate  depth_cap=30
+  DRY   ts=2026-03-19T03:26:59Z  run_gate_roll=0.6073  p_run=1.00  media_gate_roll=0.7342  p_media=0.70  media=no  title='test :: validator gate'  depth_cap=30
+  PUB   ts=2026-03-19T03:27:05Z  run_gate_roll=0.8891  p_run=1.00  media_gate_roll=0.2027  p_media=0.70  media=no  title='validator gate test entry'  depth_cap=30  validator=ok  repairs=0  new_pages=1
+  PUB   ts=2026-03-19T03:45:37Z  run_gate_roll=0.6859  p_run=0.50  media_gate_roll=0.0253  p_media=0.70  media=yes  img_src=incoming  img=9939efcb-5ae7-4050-b1f7-0e648f164a22_20260318-204537.png  title='The White Truck Pattern'  depth_cap=30  validator=ok  repairs=0  new_pages=1
+  PUSH  ts=2026-03-19T03:45:56Z  status=pushed
+  SKIP  ts=2026-03-19T04:00:05Z  run_gate_roll=0.7895  p_run=0.50
