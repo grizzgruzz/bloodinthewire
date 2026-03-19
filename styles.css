@@ -392,9 +392,10 @@ a:hover {
 .link-thumb img {
   display: block;
   width: 100%;
-  max-height: 220px;
-  object-fit: cover;
+  max-height: 300px;
+  object-fit: contain;
   object-position: center;
+  background: #060606;
   border: 1px solid #1f1f1f;
   filter: contrast(1.05) brightness(.93);
 }
