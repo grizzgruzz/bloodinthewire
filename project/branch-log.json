@@ -186,7 +186,7 @@
     },
     {
       "entry_id": "the-clipboard-man",
-      "title": "the clipboard man",
+      "title": "the man with the clipboard",
       "depth": 0,
       "roll": 1,
       "orientation": "vertical",
@@ -204,7 +204,7 @@
     },
     {
       "entry_id": "the-clipboard-man-d1",
-      "title": "the clipboard man // secondary documentation",
+      "title": "the man with the clipboard // secondary documentation",
       "depth": 1,
       "roll": 1,
       "action": "inline",
@@ -216,7 +216,7 @@
     },
     {
       "entry_id": "the-clipboard-man-d2",
-      "title": "the clipboard man // access records",
+      "title": "the man with the clipboard // access records",
       "depth": 2,
       "roll": 1,
       "action": "inline",
@@ -228,7 +228,7 @@
     },
     {
       "entry_id": "the-clipboard-man-d3",
-      "title": "the clipboard man // the fourth occurrence",
+      "title": "the man with the clipboard // the fourth occurrence",
       "depth": 3,
       "roll": 1,
       "action": "link-existing",
