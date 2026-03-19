@@ -287,6 +287,28 @@
       "image_web_path": "",
       "action": "inline",
       "page": "index.html"
+    },
+    {
+      "entry_id": "same-place-same-time",
+      "title": "Same Place Same Time",
+      "depth": 0,
+      "roll": 0,
+      "orientation": "vertical",
+      "insertion_index": 0,
+      "insertion_zone": "top",
+      "n_existing_at_publish": 11,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-19T00:03:02Z",
+      "posted_date": "2026-03-18",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "",
+      "action": "link-existing",
+      "dest_page": "fragments/street-log-01.html",
+      "dest_type": "existing-content",
+      "convergence": true,
+      "convergence_score": 1,
+      "convergence_threshold": 1
     }
   ]
 }
