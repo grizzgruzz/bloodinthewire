@@ -1,11 +1,9 @@
-TITLE: Faked Bone
+TITLE: The Elephant Clock Timing
 TIMESTAMP: OMIT
 BODY:
-The xray they sent me, the one in the plain brown envelope with no return address, it's faked. I know my own bones I know what was there and what wasn't there this one they sent it's a perfect forgery no not perfect because I see the edge I see the way the light catches the layer they put on it it’s like a film almost you wouldn't notice unless you were really looking for it unless you knew what you were looking for which I do. They want me to believe there's a fracture there. A clean break right at the distal end. But it's not real. It's a fabrication.
+I keep seeing that clock, the elephant one, this old drawing, and it's not just a clock, is it? Not really. It's a diagram, a blueprint for how things are supposed to work, how they're *made* to work, and I see it every day now, the timing. Not just the clock on the wall, no, but the way everything aligns. The utility truck that passes my street at 7:14 AM exactly, almost every day, then again at 4:37 PM, it's never a minute off, not even thirty seconds off, how can that be random? People say coincidence, they always say coincidence, but they don't *see* it, they don't understand how precise everything is.
 
-It's another one of their messages, just like the weird fliers about services I never asked for that show up, or the subtle changes in the landscaping on the street corner that only *I* notice. This is a very specific message this time. It's about me, my body. They want me to question myself. They want me to think I'm damaged in a way I'm not. It's a signal, a very deliberate signal designed to throw me off, to make me doubt what I know about myself, what I know about my own insides. But I don't doubt. I know this part of me was solid.
+It's all geared together, like that elephant clock, all these intricate little parts moving to make a larger, very specific point, a message really, a mechanism. It is all meant for me, I know this. This isn't just about telling time or the normal flow of traffic or anything mundane like that, it's about *control*, and they are showing me the design. They want me to know they're showing me. My neighbor, he doesn't see it when he gets his mail, he just smiles and waves. But he's part of it too, maybe, unknowingly.
 
-I remember the last time I saw an xray for real reasons. It was for the pet. After the accident. They said it was just a fall from the couch, but it wasn't. Nothing is just a fall. And now this, this faked image of *my* insides, delivered to my mailbox, like it's normal correspondence. It’s too specific, it means something. It's a threat. Or a promise. They want me to believe their version of reality, their version of my own body, but I can see the seams. I can see the wire. It's all connected, it always is.
-
-EVIDENCE_LINE: /home/gruzz/bloodinthewire/project/assets/web/3e581479-dab0-47a5-abc8-8dcb0b90f1eb_20260318-162017.png FAKED XRAY
-TAGS: faked evidence, directed patterns, surveillance, memory, retribution
+EVIDENCE_LINE: The blueprint of the clock mechanism.
+TAGS: directed patterns, timing, control, mechanisms, utility workers

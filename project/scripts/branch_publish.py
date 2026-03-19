@@ -956,22 +956,43 @@ def insert_links_entry(page_path: Path, href: str, label: str, note: str) -> Non
 
 def validate_image_web_path(image_web_path: str) -> str:
     """
-    Validate that an image_web_path resolves to an existing file.
+    Validate and normalise an image_web_path to a web-relative form.
 
-    If the path is non-empty but does not resolve to an existing file,
-    emits a warning to stderr and returns an empty string so no dead
-    <img> tag is rendered.
+    MEDIA PATH HARDENING (v8+):
+      - If the path is an absolute filesystem path, attempt to convert it to
+        a web-relative path by stripping the REPO_ROOT prefix.
+      - If the absolute path cannot be made relative to REPO_ROOT, reject it
+        entirely (return empty string) so no broken <img> tag is rendered.
+      - Only web-relative paths (no leading '/') are returned.
+      - If the resolved file does not exist, suppress and log to stderr.
 
-    Accepts paths relative to REPO_ROOT (e.g. "project/assets/web/foo.png")
-    or absolute paths.
-
-    Returns the original path unchanged if it resolves, empty string if not.
+    Returns a normalised web-relative path if valid, empty string if not.
     """
     if not image_web_path:
         return image_web_path
 
     candidate = Path(image_web_path)
-    if not candidate.is_absolute():
+
+    # Sanitise absolute filesystem paths (e.g. /home/gruzz/bloodinthewire/...)
+    if candidate.is_absolute():
+        try:
+            rel = candidate.relative_to(REPO_ROOT)
+            normalised = str(rel).replace('\\', '/')
+            print(
+                f'[branch_publish] MEDIA-GUARD: absolute image path "{image_web_path}" '
+                f'normalised to web-relative "{normalised}".',
+                file=sys.stderr,
+            )
+            image_web_path = normalised
+            candidate = REPO_ROOT / image_web_path
+        except ValueError:
+            print(
+                f'[branch_publish] MEDIA-GUARD: absolute image path "{image_web_path}" '
+                f'is outside REPO_ROOT and cannot be made web-relative. Suppressing.',
+                file=sys.stderr,
+            )
+            return ''
+    else:
         candidate = REPO_ROOT / image_web_path
 
     if candidate.exists():
@@ -1221,6 +1242,27 @@ def branch_resolve(
             existing_candidates = find_existing_contextual_pages(
                 REPO_ROOT, exclude_norm
             )
+
+            # DEPTH-0 POLICY (hard rule): at the surface (depth==0), convergence
+            # links must NEVER point to nodes/* pages — only fragments/* and root
+            # .html pages are allowed.  Filter out any nodes/* candidates here.
+            if depth == 0:
+                filtered_candidates = []
+                for cand_page, cand_words in existing_candidates:
+                    try:
+                        cand_rel = str(cand_page.relative_to(REPO_ROOT)).replace('\\', '/')
+                    except ValueError:
+                        cand_rel = str(cand_page).replace('\\', '/')
+                    if cand_rel.startswith('nodes/'):
+                        print(
+                            f'[branch_publish] DEPTH0-POLICY: candidate "{cand_rel}" '
+                            f'blocked at depth=0 — nodes/* links are not allowed at surface.',
+                            file=sys.stderr,
+                        )
+                    else:
+                        filtered_candidates.append((cand_page, cand_words))
+                existing_candidates = filtered_candidates
+
             convergence_result = select_relevant_existing_page(
                 title, teaser, existing_candidates,
                 threshold=convergence_threshold,
