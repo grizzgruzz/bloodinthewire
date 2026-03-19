@@ -794,6 +794,7 @@ def make_node_page(
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>bloodinthewire :: {_html.escape(node_slug)}</title>
   <link rel="stylesheet" href="../styles.css" />
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
 </head>
 <body>
   <div class="noise"></div>
@@ -887,6 +888,7 @@ def make_content_page(
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>bloodinthewire :: {_html.escape(entry_title)}</title>
   <link rel="stylesheet" href="../styles.css" />
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
 </head>
 <body>
   <div class="noise"></div>
