@@ -1006,6 +1006,225 @@ def validate_image_web_path(image_web_path: str) -> str:
     return ''
 
 
+# ── Image anti-reuse policy ───────────────────────────────────────────────────
+#
+# v9 IMAGE ANTI-REUSE POLICY (hard rules for depth >= 1):
+#
+# 1. Branch-local guard:
+#    Within a single branch chain, depth>=1 must not reuse any ancestor image
+#    already shown in that chain (especially the depth=0 surface image).
+#
+# 2. Surface-to-deep guard:
+#    For depth>=1, avoid images that are currently used on recent homepage
+#    entries (last ANTI_REUSE_COOLDOWN_DEFAULT depth=0 branch-log entries).
+#
+# 3. Selection: for depth>=1, prefer fresh library assets not in deny-set.
+#    If no eligible image remains, degrade to text-only (do not force reuse).
+#
+# Logging: any rejected candidate is logged to stderr with the reason code.
+
+import re as _re  # needed by anti-reuse helpers (stdlib, safe duplicate guard)
+import shutil as _shutil  # safe duplicate guard
+
+ANTI_REUSE_COOLDOWN_DEFAULT = 10  # last N surface images form the deny set
+
+
+def _library_stem_from_web_basename(web_basename: str) -> str:
+    """
+    Extract the original library stem from a web-ready asset basename.
+
+    Web asset names are formatted as ``{original_stem}_{YYYYMMDD}-{HHMMSS}{ext}``.
+    This function strips the timestamp suffix to recover the original library
+    filename stem, enabling cross-format comparison between web/ basenames
+    and library/ filenames.
+    """
+    stem = Path(web_basename).stem   # e.g. 'Basement_20260318-170223'
+    m = _re.match(r'^(.+)_(\d{8}-\d{6})$', stem)
+    if m:
+        return m.group(1)
+    return stem
+
+
+def _recent_surface_image_basenames(branch_log: dict, cooldown: int = ANTI_REUSE_COOLDOWN_DEFAULT) -> frozenset:
+    """
+    Return a frozenset of web image basenames from the most recent `cooldown`
+    depth=0 (surface) entries in branch_log that have a non-empty image_web_path.
+
+    Used to build the surface-to-deep deny set: depth>=1 candidates whose
+    basename appears here are considered "recently seen at the surface" and
+    are eligible for rejection by the anti-reuse guard.
+    """
+    surface_entries = [
+        e for e in branch_log.get('entries', [])
+        if e.get('depth') == 0 and e.get('image_web_path')
+    ]
+    recent = surface_entries[-cooldown:]
+    return frozenset(Path(e['image_web_path']).name for e in recent)
+
+
+def _pick_fresh_library_image(deny_basenames: frozenset) -> str:
+    """
+    Select a fresh library image whose original stem is NOT represented by
+    any basename in deny_basenames.
+
+    Archives a copy to assets/published/ and writes a metadata-stripped
+    copy to assets/web/.  Returns a web-relative path string, or empty
+    string if no eligible candidate exists.
+
+    This is the fallback path invoked when the proposed deep-level image
+    is rejected by the anti-reuse guard (branch-local or surface-to-deep).
+    """
+    assets_dir    = REPO_ROOT / 'project' / 'assets'
+    library_dir   = assets_dir / 'library'
+    published_dir = assets_dir / 'published'
+    web_dir       = assets_dir / 'web'
+    accepted_ext  = frozenset({'.jpg', '.jpeg', '.png'})
+
+    if not library_dir.is_dir():
+        return ''
+
+    # Build set of original stems that are already "used" (deny_basenames are web basenames)
+    deny_stems = {_library_stem_from_web_basename(b) for b in deny_basenames}
+
+    candidates = sorted(
+        f for f in library_dir.iterdir()
+        if f.is_file()
+        and f.suffix.lower() in accepted_ext
+        and f.stem not in deny_stems
+    )
+
+    if not candidates:
+        return ''
+
+    chosen = candidates[0]
+
+    # Archive copy to published/
+    published_dir.mkdir(parents=True, exist_ok=True)
+    web_dir.mkdir(parents=True, exist_ok=True)
+    ts = time.strftime('%Y%m%d-%H%M%S')
+    published_name = f'{chosen.stem}__{ts}{chosen.suffix}'
+    published_path = published_dir / published_name
+    _shutil.copy2(chosen, published_path)
+
+    # Strip metadata to web/ (Pillow preferred, plain copy as fallback)
+    web_name = f'{chosen.stem}_{ts}{chosen.suffix}'
+    web_path = web_dir / web_name
+    stripped = False
+    try:
+        from PIL import Image as _PILImage  # type: ignore[import]
+        ext = chosen.suffix.lower()
+        with _PILImage.open(published_path) as img:
+            if ext in ('.jpg', '.jpeg'):
+                if img.mode in ('RGBA', 'P', 'LA'):
+                    img = img.convert('RGB')
+                img.save(web_path, format='JPEG', quality=92, optimize=True,
+                         exif=b'', icc_profile=None)
+            else:
+                data = img.tobytes()
+                clean = _PILImage.frombytes(img.mode, img.size, data)
+                clean.save(web_path, format='PNG', optimize=True)
+        stripped = True
+    except Exception:
+        pass
+    if not stripped:
+        _shutil.copy2(published_path, web_path)
+
+    # Return web-relative path (forward-slash, relative to REPO_ROOT)
+    web_rel = str(web_path.relative_to(REPO_ROOT)).replace('\\', '/')
+    return web_rel
+
+
+def _anti_reuse_deep_image(
+    image_web_path: str,
+    depth: int,
+    ancestor_images: frozenset,
+    branch_log: dict,
+    cooldown: int = ANTI_REUSE_COOLDOWN_DEFAULT,
+) -> str:
+    """
+    IMAGE ANTI-REUSE POLICY — v9 guard applied at depth >= 1.
+
+    Evaluates two guards in order:
+
+    1. Branch-local guard:
+       Rejects the candidate if its web basename is already present in
+       ancestor_images (images used at shallower depths in this branch chain).
+       This prevents the same library asset from appearing on both the surface
+       card (depth=0) and any deeper content page in the same branch.
+
+    2. Surface-to-deep guard:
+       Rejects the candidate if its web basename appears in the most recent
+       `cooldown` surface (depth=0) branch-log entries.  This prevents a
+       library image used at the surface in a PREVIOUS branch from reappearing
+       on deep pages of the current branch.
+
+    On rejection: attempts to pick a fresh library image not in the deny set
+    via _pick_fresh_library_image().  If no fresh library image is available,
+    degrades to text-only (returns empty string) — never forces reuse.
+
+    All rejections are logged to stderr with the reason code.
+
+    Parameters
+    ----------
+    image_web_path  : candidate image (web-relative path or empty string)
+    depth           : current branch depth (must be >= 1 to trigger)
+    ancestor_images : frozenset of web basenames used by ancestor depths
+                      in the current branch chain (tracks branch-local reuse)
+    branch_log      : the live branch-log dict (for surface-to-deep lookup)
+    cooldown        : number of recent surface entries to check (default 10)
+
+    Returns
+    -------
+    Effective image path to use — either the original (if not blocked),
+    a fresh library path (if blocked and a fresh asset was found), or
+    empty string (if blocked and no fresh asset available).
+    """
+    if depth < 1 or not image_web_path:
+        return image_web_path
+
+    img_basename  = Path(image_web_path).name
+    surface_deny  = _recent_surface_image_basenames(branch_log, cooldown)
+    full_deny     = ancestor_images | surface_deny
+
+    if img_basename not in full_deny:
+        return image_web_path  # not in deny set — allowed
+
+    # Identify which guard(s) triggered
+    guard_reasons = []
+    if img_basename in ancestor_images:
+        guard_reasons.append('branch-local (ancestor reuse)')
+    if img_basename in surface_deny:
+        guard_reasons.append(f'surface-to-deep cooldown (last {cooldown} surface images)')
+    reason_str = ' + '.join(guard_reasons)
+
+    print(
+        f'[branch_publish] IMAGE-ANTI-REUSE: depth={depth} — candidate '
+        f'"{img_basename}" REJECTED ({reason_str}). '
+        f'deny_set_size={len(full_deny)}. Seeking fresh library asset.',
+        file=sys.stderr,
+    )
+
+    # Try to pick a fresh library asset not in the deny set
+    fresh = _pick_fresh_library_image(full_deny)
+    if fresh:
+        fresh_basename = Path(fresh).name
+        print(
+            f'[branch_publish] IMAGE-ANTI-REUSE: selected fresh library image '
+            f'"{fresh_basename}" as depth={depth} replacement.',
+            file=sys.stderr,
+        )
+        return fresh
+
+    # No fresh library image available — degrade to text-only
+    print(
+        f'[branch_publish] IMAGE-ANTI-REUSE: no fresh library image available '
+        f'(all {len(full_deny)} deny-set entries exhaust library). '
+        f'Degrading to text-only at depth={depth}.',
+        file=sys.stderr,
+    )
+    return ''
+
+
 # ── Depth-aware image guard ───────────────────────────────────────────────────
 
 def image_allowed_at_depth(image_web_path: str, image_source: str, depth: int) -> str:
@@ -1089,6 +1308,9 @@ def branch_resolve(
     # ancestry_chain: list of normalised page paths (relative to repo root),
     # newest-first.  Used by anti-backlink guard (v8) to prevent pivot loops.
     ancestry_chain: list | None = None,
+    # ancestor_images: frozenset of web basenames already shown in this branch chain.
+    # Used by v9 image anti-reuse guard to block same-asset reuse at depth>=1.
+    ancestor_images: frozenset | None = None,
 ) -> None:
     """
     Recursively resolve branch decisions and write pages.
@@ -1134,11 +1356,27 @@ def branch_resolve(
         current_page_rel = str(target_page).replace('\\', '/')
     updated_ancestry = [current_page_rel] + ancestry_chain
 
+    # Initialise ancestor_images tracking (v9 image anti-reuse guard)
+    if ancestor_images is None:
+        ancestor_images = frozenset()
+
     # Validate image path — suppress dead refs before any HTML is written (v8)
     image_web_path = validate_image_web_path(image_web_path)
 
     # Apply depth-based media source guard before any HTML is written
     effective_image = image_allowed_at_depth(image_web_path, image_source, depth)
+
+    # Apply image anti-reuse guard (v9) — depth>=1 only.
+    # Rejects any candidate that is already in the ancestor chain or
+    # among recent surface entries; falls back to fresh library asset
+    # or text-only. depth=0 is never subject to this guard.
+    if depth >= 1 and effective_image:
+        effective_image = _anti_reuse_deep_image(
+            image_web_path=effective_image,
+            depth=depth,
+            ancestor_images=ancestor_images,
+            branch_log=branch_log,
+        )
     # At cap → force inline
     effective_roll = 1 if depth >= depth_cap else roll(force_roll if is_root else None)
 
@@ -1155,6 +1393,14 @@ def branch_resolve(
 
     cascade_pos = pick_cascade_pos(target_page)
 
+    # Build updated ancestor_images set for child calls (v9 anti-reuse guard).
+    # Include the effective_image used at this depth so deeper recursions know
+    # what images have already been shown in this branch chain.
+    if effective_image:
+        updated_ancestor_images = ancestor_images | frozenset({Path(effective_image).name})
+    else:
+        updated_ancestor_images = ancestor_images
+
     log_record: dict = {
         'entry_id':        entry_id,
         'title':           title,
@@ -1170,6 +1416,7 @@ def branch_resolve(
         'image_source':   image_source,
         'image_blocked':  (image_source == 'incoming' and depth > 0),
         'image_web_path': effective_image,   # actual image used on card (empty = no media shown)
+        'image_anti_reuse_applied': (depth >= 1 and bool(image_web_path) and effective_image != image_web_path),
     }
 
     if effective_roll == 1:
@@ -1332,6 +1579,14 @@ def branch_resolve(
                 # Destination is a fresh content page
                 # v4: deeper pages must never receive incoming/-sourced images
                 deeper_image = image_allowed_at_depth(image_web_path, image_source, deeper_depth)
+                # v9: apply anti-reuse guard to content page image
+                if deeper_depth >= 1 and deeper_image:
+                    deeper_image = _anti_reuse_deep_image(
+                        image_web_path=deeper_image,
+                        depth=deeper_depth,
+                        ancestor_images=updated_ancestor_images,
+                        branch_log=branch_log,
+                    )
                 node_html = make_content_page(
                     node_slug=node_slug,
                     entry_title=title,
@@ -1420,9 +1675,10 @@ def branch_resolve(
                     branch_log=branch_log,
                     summary=summary,
                     is_root=False,
-                    orientation=orientation, # propagate from root roll
-                    parent_href=recursive_parent_href,  # v7: up-nav for children of this node
-                    ancestry_chain=updated_ancestry,    # v8: anti-backlink guard
+                    orientation=orientation,              # propagate from root roll
+                    parent_href=recursive_parent_href,    # v7: up-nav for children of this node
+                    ancestry_chain=updated_ancestry,      # v8: anti-backlink guard
+                    ancestor_images=updated_ancestor_images,  # v9: image anti-reuse guard
                 )
 
     log_entry(branch_log, log_record)
