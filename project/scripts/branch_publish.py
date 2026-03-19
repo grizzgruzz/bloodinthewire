@@ -1587,13 +1587,40 @@ def branch_resolve(
                         ancestor_images=updated_ancestor_images,
                         branch_log=branch_log,
                     )
+
+                # Phase 1 inline-link injection (post-generation pass, depth>=1)
+                # Inserts exactly ONE obvious inline hyperlink in the body text.
+                # Records metadata in log_record for auditability.
+                # node_path is the destination page being written; use its
+                # parent (node_path) as the page context for href calculation.
+                inline_body_html = body_html
+                inline_meta: dict = {'link_type': 'none', 'inline_skipped': True}
+                if deeper_depth >= 1 and body_html.strip():
+                    inline_body_html, inline_meta = inject_inline_links(
+                        body_html=body_html,
+                        depth=deeper_depth,
+                        title=title,
+                        teaser=teaser,
+                        fragment_href=fragment_href,
+                        target_page=node_path,
+                        ancestry_chain=updated_ancestry,
+                        convergence_threshold=convergence_threshold,
+                    )
+                log_record.update({
+                    'inline_link_type':    inline_meta.get('link_type', 'none'),
+                    'inline_anchor_text':  inline_meta.get('inline_anchor_text', ''),
+                    'inline_dest_page':    inline_meta.get('inline_dest_page', ''),
+                    'inline_dest_href':    inline_meta.get('inline_dest_href', ''),
+                    'inline_skipped':      inline_meta.get('inline_skipped', True),
+                })
+
                 node_html = make_content_page(
                     node_slug=node_slug,
                     entry_title=title,
                     teaser=teaser,
                     fragment_href=fragment_href,
-                    body_html=body_html,
-                    image_web_path=deeper_image,   # v4: depth-guarded
+                    body_html=inline_body_html,   # Phase 1: inline-link injected
+                    image_web_path=deeper_image,  # v4: depth-guarded
                     timestamp=timestamp,
                     posted_date=posted_date,
                     depth=deeper_depth,
@@ -1682,6 +1709,312 @@ def branch_resolve(
                 )
 
     log_entry(branch_log, log_record)
+
+
+# ── Phase 1: Inline-link injector ────────────────────────────────────────────
+#
+# PHASE 1 INLINE-LINK BRANCHING
+# ==============================
+# After text generation and before page write, a post-generation pass inserts
+# ONE inline hyperlink inside the body_html of newly generated pages at depth>=1.
+#
+# Rules:
+#   • Phase 1: exactly 1 inline link per eligible page (safe rollout).
+#   • Depth < 1 pages are NOT modified (inline links only on deeper content).
+#   • Anchor text selection: choose a meaningful multi-word phrase (2-4 words)
+#     from the body text, filtered against stop-words. Prefer nouns and
+#     descriptive phrases over verbs and fragments.
+#   • Destination: use the same motif-word overlap logic as convergence, but
+#     with a SEPARATE selection that excludes the current page's own
+#     fragment_href and target_page from candidates.
+#   • Anti-backlink: never link to an ancestor page in the current branch.
+#   • CSS class: wire-inline-link (see styles.css) — high-visibility amber
+#     underline with hover treatment. Must remain obvious on dark background.
+#   • The injected link is a <a href="..." class="wire-inline-link"> tag
+#     inserted around the selected anchor phrase inside a <p> in wire-body.
+#   • Metadata is recorded in the branch-log entry as:
+#       link_type=inline_word
+#       inline_anchor_text=<phrase>
+#       inline_dest_page=<dest>
+#       inline_dest_href=<href>
+#   • If no eligible destination or no eligible anchor phrase is found,
+#     the injector skips gracefully — it never forces a broken link.
+#
+# Styling requirements (HARD, never soften):
+#   • colour: #f5c842 (amber) — max contrast on dark background
+#   • text-decoration: underline, 2px thick
+#   • font-weight: bold
+#   • hover/focus: white text, amber background highlight
+#   • class: wire-inline-link on every injected anchor
+#   • ::after content: ' ↗' (small arrow, scannable)
+#
+# See styles.css block "INLINE PROSE LINKS (Phase 1 inline-link branching)"
+# for full CSS implementation.
+
+# Stop-word list for anchor phrase selection (same set as motif-word filter
+# plus additional function words that make bad anchor text)
+_ANCHOR_STOP_WORDS = frozenset({
+    'this', 'that', 'with', 'from', 'have', 'been', 'will', 'they',
+    'were', 'when', 'then', 'than', 'into', 'some', 'what', 'also',
+    'more', 'each', 'only', 'over', 'such', 'very', 'just', 'like',
+    'here', 'there', 'about', 'after', 'before', 'still', 'again',
+    'other', 'first', 'would', 'could', 'their', 'which', 'where',
+    'same', 'once', 'back', 'down', 'away', 'does', 'both', 'said',
+    'know', 'that', 'have', 'from', 'they', 'been', 'will', 'were',
+    'your', 'with', 'what', 'when', 'make', 'like', 'time', 'just',
+    'into', 'look', 'come', 'much', 'then', 'well', 'also', 'back',
+    'even', 'want', 'give', 'most', 'tell', 'very', 'call', 'need',
+    # small words
+    'the', 'and', 'but', 'not', 'for', 'are', 'can', 'was', 'has',
+    'had', 'him', 'his', 'her', 'she', 'its', 'our', 'you', 'who',
+    'got', 'let', 'put', 'see', 'may', 'now', 'too', 'any', 'two',
+    'way', 'day', 'get', 'use', 'how', 'new', 'try', 'run', 'old',
+})
+
+
+def _extract_anchor_candidates(body_html: str) -> list:
+    """
+    Extract candidate anchor phrases from body_html (text inside <p> tags).
+
+    Returns a list of (phrase, paragraph_text, paragraph_index) tuples,
+    sorted by candidate quality score (best first).
+
+    Candidate phrases are multi-word sequences (2-4 words) where:
+      - At least one word is >= 5 chars and not a stop word
+      - The phrase does not start or end with a stop word
+      - The phrase is not all-caps abbreviation
+      - The phrase occurs inside a paragraph of >= 40 chars (not a stub)
+    """
+    # Strip all HTML tags to get plain text paragraphs
+    p_pattern = re.compile(r'<p[^>]*>(.*?)</p>', re.DOTALL | re.IGNORECASE)
+    paragraphs = []
+    for m in p_pattern.finditer(body_html):
+        raw = m.group(1)
+        plain = re.sub(r'<[^>]+>', '', raw).strip()
+        if len(plain) >= 40:
+            paragraphs.append((plain, m.start()))
+
+    if not paragraphs:
+        return []
+
+    candidates = []
+    word_pattern = re.compile(r"[a-zA-Z][a-zA-Z''-]{2,}")
+
+    for para_idx, (para_text, para_start) in enumerate(paragraphs):
+        words = word_pattern.findall(para_text)
+        if len(words) < 5:
+            continue
+
+        # Slide a 3-word window across the paragraph
+        for i in range(len(words) - 2):
+            phrase_words = words[i:i+3]
+            phrase = ' '.join(phrase_words)
+
+            # Reject phrases starting or ending with stop words
+            if phrase_words[0].lower() in _ANCHOR_STOP_WORDS:
+                continue
+            if phrase_words[-1].lower() in _ANCHOR_STOP_WORDS:
+                continue
+
+            # Require at least one content word >= 5 chars
+            has_content_word = any(
+                len(w) >= 5 and w.lower() not in _ANCHOR_STOP_WORDS
+                for w in phrase_words
+            )
+            if not has_content_word:
+                continue
+
+            # Prefer phrases from paragraph middle (avoid opener/closing clichés)
+            pos_score = 1 if (i > 0 and i < len(words) - 3) else 0
+
+            # Score = sum of content word lengths (longer = more specific)
+            length_score = sum(
+                len(w) for w in phrase_words
+                if w.lower() not in _ANCHOR_STOP_WORDS
+            )
+
+            candidates.append((
+                -(length_score + pos_score * 3),  # negative for sort ascending = best first
+                phrase,
+                para_text,
+                para_idx,
+            ))
+
+    # Sort: best (longest content, middle-of-para) first; deduplicate
+    candidates.sort(key=lambda x: x[0])
+    seen_phrases = set()
+    result = []
+    for score, phrase, para, para_idx in candidates:
+        norm = phrase.lower()
+        if norm not in seen_phrases:
+            seen_phrases.add(norm)
+            result.append((phrase, para, para_idx))
+        if len(result) >= 20:
+            break
+
+    return result
+
+
+def inject_inline_links(
+    body_html: str,
+    depth: int,
+    title: str,
+    teaser: str,
+    fragment_href: str,
+    target_page: Path,
+    ancestry_chain: list | None,
+    convergence_threshold: int = 1,
+) -> tuple:
+    """
+    Phase 1 inline-link injection.
+
+    Inserts exactly ONE inline <a class="wire-inline-link"> hyperlink inside
+    the generated body_html at depth >= 1.
+
+    Returns (modified_body_html, metadata_dict).
+
+    metadata_dict contains:
+      link_type         = 'inline_word' (or 'none' if not injected)
+      inline_anchor_text = phrase wrapped in <a>
+      inline_dest_page   = dest page path (relative to repo root)
+      inline_dest_href   = href inserted into anchor tag
+      inline_skipped     = True if injection was skipped (no eligible target/anchor)
+
+    If injection cannot be performed (no eligible anchor, no eligible
+    destination, or depth < 1), returns (body_html, {'link_type': 'none', ...}).
+
+    IMPORTANT: This function NEVER inserts a link that:
+      - Points to a page in the ancestry chain (anti-backlink rule)
+      - Points to the source fragment_href itself (self-link guard)
+      - Points to the current target_page (current-page guard)
+      - Has no eligible anchor phrase in body_html
+    """
+    empty_meta = {
+        'link_type': 'none',
+        'inline_anchor_text': '',
+        'inline_dest_page': '',
+        'inline_dest_href': '',
+        'inline_skipped': True,
+    }
+
+    if depth < 1 or not body_html or not body_html.strip():
+        return body_html, empty_meta
+
+    # Build exclusion set: current target + fragment_href + ancestry
+    exclude_norm: set = set()
+    try:
+        tp_rel = str(target_page.relative_to(REPO_ROOT)).replace('\\', '/')
+        exclude_norm.add(tp_rel)
+    except ValueError:
+        pass
+    if fragment_href:
+        exclude_norm.add(fragment_href.lstrip('/').replace('\\', '/'))
+    if ancestry_chain:
+        for a in ancestry_chain:
+            exclude_norm.add(str(a).replace('\\', '/').lstrip('/'))
+
+    # Find eligible destination pages
+    candidates = find_existing_contextual_pages(REPO_ROOT, exclude_norm)
+    if not candidates:
+        print(
+            f'[inline_inject] depth={depth}: no eligible destination pages. Skipping.',
+            file=sys.stderr,
+        )
+        return body_html, empty_meta
+
+    # Score by motif overlap with title+teaser
+    result = select_relevant_existing_page(
+        title, teaser, candidates,
+        threshold=convergence_threshold,
+        ancestry_chain=ancestry_chain or [],
+    )
+    if result is None:
+        print(
+            f'[inline_inject] depth={depth}: no contextually relevant destination found. Skipping.',
+            file=sys.stderr,
+        )
+        return body_html, empty_meta
+
+    dest_page, score = result
+    dest_rel = str(dest_page.relative_to(REPO_ROOT)).replace('\\', '/')
+    # href relative to target_page's location (content pages are in nodes/)
+    dest_href = _dest_href_from_target(dest_page, REPO_ROOT, target_page)
+
+    # Extract anchor phrase candidates from body_html
+    anchor_candidates = _extract_anchor_candidates(body_html)
+    if not anchor_candidates:
+        print(
+            f'[inline_inject] depth={depth}: no anchor phrase candidates in body. Skipping.',
+            file=sys.stderr,
+        )
+        return body_html, empty_meta
+
+    # Pick the best anchor phrase (first = highest scored)
+    anchor_phrase, para_text, _ = anchor_candidates[0]
+
+    # Build the replacement: wrap anchor_phrase in <a class="wire-inline-link">
+    # We need to find the FIRST occurrence of anchor_phrase inside a <p> tag
+    # and wrap it without breaking any existing HTML tags.
+    #
+    # Strategy: work on <p> plain-text content only. Find the paragraph
+    # containing anchor_phrase, then do a targeted replacement just on that
+    # first occurrence within the first <p> that contains it.
+
+    link_tag = (
+        f'<a href="{_html.escape(dest_href)}" '
+        f'class="wire-inline-link" '
+        f'title="follow thread">'
+        f'{_html.escape(anchor_phrase)}'
+        f'</a>'
+    )
+
+    # Replace the first occurrence of anchor_phrase in body_html
+    # Safety: only replace once, and only if not already inside an <a> tag.
+    # We check by ensuring the match position is not inside an existing href.
+    modified = body_html
+    search_phrase = re.escape(anchor_phrase)
+    # Find first occurrence not inside an existing <a>...</a>
+    in_anchor_re = re.compile(r'<a\b[^>]*>.*?</a>', re.DOTALL | re.IGNORECASE)
+    anchor_spans = [(m.start(), m.end()) for m in in_anchor_re.finditer(modified)]
+
+    match = re.search(search_phrase, modified, re.IGNORECASE)
+    if match:
+        # Check not inside existing anchor
+        ms, me = match.start(), match.end()
+        inside_anchor = any(s <= ms and me <= e for s, e in anchor_spans)
+        if not inside_anchor:
+            modified = modified[:ms] + link_tag + modified[me:]
+        else:
+            print(
+                f'[inline_inject] depth={depth}: anchor "{anchor_phrase}" '
+                f'is already inside an <a> tag. Skipping.',
+                file=sys.stderr,
+            )
+            return body_html, empty_meta
+    else:
+        print(
+            f'[inline_inject] depth={depth}: anchor phrase "{anchor_phrase}" '
+            f'not found in body_html after candidate extraction. Skipping.',
+            file=sys.stderr,
+        )
+        return body_html, empty_meta
+
+    meta = {
+        'link_type': 'inline_word',
+        'inline_anchor_text': anchor_phrase,
+        'inline_dest_page': dest_rel,
+        'inline_dest_href': dest_href,
+        'inline_skipped': False,
+        'inline_dest_motif_score': score,
+    }
+
+    print(
+        f'[inline_inject] depth={depth}: injected link '
+        f'anchor="{anchor_phrase}" → dest="{dest_rel}" (score={score})',
+        file=sys.stderr,
+    )
+
+    return modified, meta
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────

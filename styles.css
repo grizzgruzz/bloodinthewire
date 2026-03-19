@@ -506,6 +506,44 @@ marquee {
   }
 }
 
+/* ── INLINE PROSE LINKS (Phase 1 inline-link branching) ─────────────── */
+/* Hard rule: inline links inside generated body text must be UNMISTAKABLE. */
+/* High-contrast amber/gold colour on dark background + thick underline.    */
+/* Visible on mobile, keyboard-focusable, WCAG AA contrast on dark bg.     */
+
+.wire-body a.wire-inline-link,
+.wire-inline-link {
+  color: #f5c842;                /* bright amber — max contrast on dark bg */
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  font-weight: bold;
+  letter-spacing: .03em;
+  border-bottom: 1px solid rgba(245, 200, 66, 0.45);
+  padding: 0 1px;
+  transition: color .12s, background .12s, border-color .12s;
+}
+
+.wire-body a.wire-inline-link:hover,
+.wire-body a.wire-inline-link:focus,
+.wire-inline-link:hover,
+.wire-inline-link:focus {
+  color: #fff;
+  background: rgba(245, 200, 66, 0.22);
+  border-color: #f5c842;
+  text-decoration-color: #fff;
+  outline: none;
+}
+
+/* small "↗ inline" marker after the link — scannable, obvious */
+.wire-body a.wire-inline-link::after,
+.wire-inline-link::after {
+  content: ' ↗';
+  font-size: .78em;
+  opacity: .7;
+  font-weight: normal;
+}
+
 /* ── Nav affordances (v7 up/down/home) ───────────────────────────────── */
 .nav-up, .nav-down, .nav-home {
   margin: 4px 0;

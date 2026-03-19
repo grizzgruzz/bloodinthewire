@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": 1,
-    "note": "Permanent record of branch decisions. Never modify manually — branch_publish.py appends here."
+    "note": "Permanent record of branch decisions. Never modify manually \u2014 branch_publish.py appends here."
   },
   "entries": [
     {
@@ -643,6 +643,53 @@
       "timestamp_utc": "2026-03-18T23:59:05Z",
       "posted_date": "2026-03-18",
       "note": "deepening migration: +3 layers from street-log-01"
+    },
+    {
+      "entry_id": "signal-overlap-the-documentation-watches",
+      "title": "signal overlap // the documentation watches back",
+      "depth": 1,
+      "roll": 0,
+      "orientation": "vertical",
+      "insertion_index": 0,
+      "insertion_zone": "top",
+      "n_existing_at_publish": 0,
+      "target_page": "nodes/node-signal-overlap-t-d0-20260318-192440.html",
+      "timestamp_utc": "2026-03-19T02:24:40Z",
+      "posted_date": "2026-03-18",
+      "image_source": "library",
+      "image_blocked": false,
+      "image_web_path": "",
+      "image_anti_reuse_applied": false,
+      "inline_link_type": "inline_word",
+      "inline_anchor_text": "documentation continues because",
+      "inline_dest_page": "fragments/frequency-note-03.html",
+      "inline_dest_href": "../fragments/frequency-note-03.html",
+      "inline_skipped": false,
+      "action": "link",
+      "dest_page": "nodes/node-signal-overlap-t-d1-20260318-192440.html",
+      "dest_type": "content",
+      "dest_roll": 1
+    },
+    {
+      "entry_id": "signal-overlap-the-documentation-watches",
+      "title": "signal overlap // the documentation watches back",
+      "depth": 0,
+      "roll": 0,
+      "orientation": "vertical",
+      "insertion_index": 13,
+      "insertion_zone": "bottom",
+      "n_existing_at_publish": 13,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-19T02:24:40Z",
+      "posted_date": "2026-03-18",
+      "image_source": "library",
+      "image_blocked": false,
+      "image_web_path": "",
+      "image_anti_reuse_applied": false,
+      "action": "link",
+      "dest_page": "nodes/node-signal-overlap-t-d0-20260318-192440.html",
+      "dest_type": "node",
+      "dest_roll": 0
     }
   ]
 }
