@@ -382,19 +382,25 @@ a:hover {
 /* Hard rule: if roll hits, media MUST be visibly shown on the card.       */
 /* If roll misses, .link-thumb is never emitted — no image shown.          */
 
+/* Image-led layout: image fills full card width; text below conforms to
+   that width naturally. Card width is set by grid/cp-* class.
+   min-width prevents degenerate thumbnails; max-height+cover crops extreme portraits. */
 .link-thumb {
   margin: 0 0 10px;
   border: 1px dashed #3a3a3a;
   padding: 6px;
   background: #0a0a0a;
+  min-width: 160px;
 }
 
 .link-thumb img {
   display: block;
   width: 100%;
-  max-height: 300px;
-  object-fit: contain;
-  object-position: center;
+  height: auto;
+  min-height: 120px;
+  max-height: 520px;
+  object-fit: cover;
+  object-position: center top;
   background: #060606;
   border: 1px solid #1f1f1f;
   filter: contrast(1.05) brightness(.93);

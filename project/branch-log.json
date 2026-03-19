@@ -331,29 +331,6 @@
       "action": "inline",
       "page": "index.html",
       "_corrected": "image_web_path was empty; van image added to inline block"
-    },
-    {
-      "entry_id": "the-elephant-clock-timing",
-      "title": "The Elephant Clock Timing",
-      "depth": 0,
-      "roll": 0,
-      "orientation": "vertical",
-      "insertion_index": 0,
-      "insertion_zone": "top",
-      "n_existing_at_publish": 13,
-      "target_page": "index.html",
-      "timestamp_utc": "2026-03-19T00:03:29Z",
-      "posted_date": "2026-03-18",
-      "image_source": "library",
-      "image_blocked": false,
-      "image_web_path": "project/assets/web/-The-Elephant-Clock-Folio-from-a-Book-of-the-Knowledge-of-Ingenious-Mechanical-Devices-by-al-Jazari-MET-DP234075_20260318-170319.jpg",
-      "action": "link-existing",
-      "dest_page": "fragments/street-log-01.html",
-      "dest_type": "existing-content",
-      "convergence": true,
-      "convergence_score": 1,
-      "convergence_threshold": 1,
-      "_corrected": "image_web_path was empty; elephant clock library image added"
     }
   ]
 }
