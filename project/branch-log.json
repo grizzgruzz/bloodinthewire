@@ -309,6 +309,24 @@
       "convergence": true,
       "convergence_score": 1,
       "convergence_threshold": 1
+    },
+    {
+      "entry_id": "the-van-is-always-there",
+      "title": "The Van Is Always There",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "vertical",
+      "insertion_index": 6,
+      "insertion_zone": "middle",
+      "n_existing_at_publish": 12,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-19T00:03:16Z",
+      "posted_date": "2026-03-18",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "",
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }
