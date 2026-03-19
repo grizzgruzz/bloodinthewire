@@ -10,3 +10,4 @@ PUB   ts=2026-03-19T00:02:23Z  run_gate_roll=0.8386  p_run=0.50  media_gate_roll
 PUB   ts=2026-03-19T00:02:38Z  run_gate_roll=0.0988  p_run=0.50  media_gate_roll=0.8145  p_media=0.70  media=no (media_gate=False)  title='The Leg Changed'  depth_cap=30
 PUB   ts=2026-03-19T00:02:51Z  run_gate_roll=0.0070  p_run=0.50  media_gate_roll=0.8609  p_media=0.70  media=no (media_gate=False)  title='Same Place Same Time'  depth_cap=30
 PUB   ts=2026-03-19T00:03:05Z  run_gate_roll=0.1614  p_run=0.50  media_gate_roll=0.8430  p_media=0.70  media=no (media_gate=False)  title='The Van Is Always There'  depth_cap=30
+PUB   ts=2026-03-19T00:03:19Z  run_gate_roll=0.8441  p_run=0.50  media_gate_roll=0.7828  p_media=0.70  media=no (media_gate=False)  title='The Elephant Clock Timing'  depth_cap=30
