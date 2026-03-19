@@ -19,3 +19,6 @@ PUB   ts=2026-03-19T03:45:37Z  run_gate_roll=0.6859  p_run=0.50  media_gate_roll
 PUSH  ts=2026-03-19T03:45:56Z  status=pushed
 SKIP  ts=2026-03-19T04:00:05Z  run_gate_roll=0.7895  p_run=0.50
 PUB   ts=2026-03-19T16:00:11Z  run_gate_roll=0.0063  p_run=0.50  media_gate_roll=0.7076  p_media=0.70  media=no (media_gate=False)  title="The Elephant Clock isn't a Clock"  depth_cap=30  validator=ok  repairs=0  new_pages=0
+PUSH  ts=2026-03-19T16:00:34Z  status=pushed
+DRY   ts=2026-03-19T21:41:34Z  run_gate_roll=0.3100  p_run=1.00  media_gate_roll=0.8010  p_media=0.70  media=no (dry-run)  mode=auto-generate  depth_cap=30
+SKIP  ts=2026-03-19T22:00:10Z  run_gate_roll=0.5795  p_run=0.50
