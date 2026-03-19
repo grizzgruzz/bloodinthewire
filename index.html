@@ -27,11 +27,12 @@
 
 
 
-    <!-- branch: link-existing  depth=0  seed=0  orient=vertical -->
-    <section class="cascade-block cascade-link cascade-converge cp-b cascade-orient-vertical" data-entry="the-white-truck-pattern" data-type="link-existing" data-depth="0" data-branch-seed="0" data-orientation="vertical">
+    <!-- branch: link  depth=0  seed=0  orient=vertical -->
+    <!-- DEPTH0-UNIQUE-BRANCH: repaired from link-existing (old logic) to new unique destination -->
+    <section class="cascade-block cascade-node cp-b cascade-orient-vertical" data-entry="the-white-truck-pattern" data-type="link" data-depth="0" data-branch-seed="0" data-orientation="vertical">
       <figure class="link-thumb"><img src="project/assets/web/9939efcb-5ae7-4050-b1f7-0e648f164a22_20260318-204537.png" alt="evidence thumbnail"></figure>
       <h2>The White Truck Pattern</h2>
-      <span class="lean-link"><a href="fragments/sighting-0002.html">open entry</a> <span class="stamp">// White contractor truck near mailbox street.</span></span>
+      <span class="lean-link"><a href="nodes/node-the-white-truck-d1-20260319.html">open node</a> <span class="stamp">// White contractor truck near mailbox street.</span></span>
       <p class="stamp">posted: 2026-03-18</p>
     </section>
 
@@ -208,6 +209,24 @@
       <p class="stamp">posted: 2026-03-18</p>
     </section>
 
+    <!-- branch: link  depth=0  seed=0  orient=vertical -->
+    <section class="cascade-block cascade-link cp-c cascade-orient-vertical" data-entry="depth-zero-unique-branch-test" data-type="link" data-depth="0" data-branch-seed="0" data-orientation="vertical">
+      <h2>Depth Zero Unique Branch Test</h2>
+      <span class="lean-link"><a href="nodes/node-depth-zero-uniqu-d0-20260318-205253.html">open entry</a> <span class="stamp">// forced depth0 branch to new unique node -- validation run</span></span>
+      <p class="stamp">posted: 2026-03-19</p>
+    </section>
+
+    <!-- branch: link  depth=0  seed=0  orient=horizontal -->
+    <section class="cascade-block cascade-link cp-d cascade-orient-horizontal" data-entry="depth-zero-convergence-block-test-no-fla" data-type="link" data-depth="0" data-branch-seed="0" data-orientation="horizontal">
+      <h2>Depth Zero Convergence Block Test No Flag</h2>
+      <span class="lean-link"><a href="nodes/node-depth-zero-conve-d0-20260318-205305.html">open entry</a> <span class="stamp">// depth0 must block convergence even without no-convergence flag</span></span>
+      <p class="stamp">posted: 2026-03-19</p>
+    </section>
+
+
+
+
+
 
 
 
@@ -227,6 +246,8 @@
       <h3>related fragments // some moved</h3>
       <ul>
         <!-- LINKS:START -->
+        <li><a href="nodes/node-depth-zero-conve-d0-20260318-205305.html">node-depth-zero-conve-d0-20260318-205305</a> (new entry)</li>
+        <li><a href="nodes/node-depth-zero-uniqu-d0-20260318-205253.html">node-depth-zero-uniqu-d0-20260318-205253</a> (new entry)</li>
         <li><a href="fragments/sighting-0002.html">sighting-0002</a> (auto-publish 2026-03-18)</li>
         <li><a href="fragments/signal-test-inline.html">signal-test-inline</a> (auto-publish 2026-03-18)</li>
         <li><a href="nodes/node-signal-overlap-t-d0-20260318-192440.html">node-signal-overlap-t-d0-20260318-192440</a> (phase 1 inline link test)</li>

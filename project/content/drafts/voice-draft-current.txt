@@ -1,9 +1,11 @@
-TITLE: The Elephant Clock Timing
-TIMESTAMP: OMIT
+TITLE: The White Truck Pattern
+TIMESTAMP: 20:45
 BODY:
-I keep seeing that clock, the elephant one, this old drawing, and it's not just a clock, is it? Not really. It's a diagram, a blueprint for how things are supposed to work, how they're *made* to work, and I see it every day now, the timing. Not just the clock on the wall, no, but the way everything aligns. The utility truck that passes my street at 7:14 AM exactly, almost every day, then again at 4:37 PM, it's never a minute off, not even thirty seconds off, how can that be random? People say coincidence, they always say coincidence, but they don't *see* it, they don't understand how precise everything is.
+I saw the white truck again, the same kind, parked just down from my street, facing the wrong way. You think that's normal, right, a truck parked on a street. But it's not the parking, it's *when* it's there. It's always there after I check the mail. Not sometimes, not often, always. I go to the mailbox, I come back inside, and within five minutes, sometimes less, that white truck is there. Not moving, just sitting. The man in it, he never looks at me, but I know he's watching. He has to be watching, that's the point of it. He's part of the pattern, you see.
 
-It's all geared together, like that elephant clock, all these intricate little parts moving to make a larger, very specific point, a message really, a mechanism. It is all meant for me, I know this. This isn't just about telling time or the normal flow of traffic or anything mundane like that, it's about *control*, and they are showing me the design. They want me to know they're showing me. My neighbor, he doesn't see it when he gets his mail, he just smiles and waves. But he's part of it too, maybe, unknowingly.
+It's not the same truck, I'm not saying it's the *exact* same truck every time, but it's always that specific model, that specific shade of off-white, with the same kind of ladder rack on the top, like a contractor or something. It's too specific to be random, far too specific. You might think I'm crazy for noticing this, for connecting things, but it's not crazy when it happens every single time. It's a signal. Or a response. I don't know which, but it's definitely one of them. They want me to know they're there, that's the only thing that makes sense. This isn't just a delivery route, this is... a circuit. Their circuit. My circuit.
 
-EVIDENCE_LINE: The blueprint of the clock mechanism.
-TAGS: directed patterns, timing, control, mechanisms, utility workers
+This picture, this is from yesterday. It was parked there. Just like I said. Right after the mail. Proof.
+
+EVIDENCE_LINE: White contractor truck near mailbox street.
+TAGS: patterns, surveillance, utility workers, certainty, proof

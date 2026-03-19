@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-branch_publish.py  v8
+branch_publish.py  v9
 =====================
 Branching-publish engine for bloodinthewire.
 
@@ -80,6 +80,26 @@ v6 additions
       - bottom -> insertion_index=n_existing
   • The chosen insertion_zone is stored in branch-log.json for auditability.
   • This replaces the old uniform random insertion_index across all positions.
+
+v9 additions
+------------
+  • DEPTH-0 HARD UNIQUENESS RULE (absolute):
+      At depth==0 (surface / main-page post), roll=0 ALWAYS creates a NEW
+      unique destination page.  Convergence (link-to-existing) is permanently
+      blocked at depth==0, regardless of motif overlap, threshold, or
+      --no-convergence flag state.  This is the authoritative rule:
+        1. Depth=0 main-page post is generated.
+        2. If it branches (roll=0) → depth=1 destination MUST be a NEW unique page.
+        3. Depth=0 must NEVER converge/link-existing to prior pages/fragments/nodes.
+        4. Depth=0 CAN still produce inline card (roll=1) — no change there.
+        5. Convergence remains allowed only at depth>=1 per existing rules.
+      An explicit stderr log marker is emitted: DEPTH0-UNIQUE-BRANCH.
+      Branch-log entries for depth=0 link actions include:
+        depth0_unique_branch=true
+        depth0_convergence_blocked="hard-rule: depth0 always creates unique destination"
+      Summary line includes *** DEPTH0-UNIQUE-BRANCH: new unique destination ***.
+  • IMAGE ANTI-REUSE POLICY (hard rules for depth >= 1):
+      (moved from v8 numbering — unchanged in behaviour)
 
 v8 additions
 ------------
@@ -1471,7 +1491,20 @@ def branch_resolve(
         # Apply depth progression gate
         depth_gate_blocked = False
         depth_gate_roll    = None
-        if depth >= 1 and not no_convergence:
+
+        # DEPTH-0 HARD UNIQUENESS RULE (v9+, absolute):
+        # At depth==0 (surface / main-page post), convergence is ALWAYS blocked.
+        # A depth=0 branch MUST ALWAYS create a NEW unique destination page
+        # — it must NEVER link to any existing page/fragment/node.
+        # This rule supersedes all other convergence logic at depth==0.
+        if depth == 0:
+            depth_gate_blocked = True
+            print(
+                '[branch_publish] DEPTH0-UNIQUE-BRANCH: depth=0 convergence '
+                'hard-blocked — will create new unique destination.',
+                file=sys.stderr,
+            )
+        elif depth >= 1 and not no_convergence:
             p_new = _depth_new_page_probability(depth)
             depth_gate_roll = random.random()
             if depth_gate_roll < p_new:
@@ -1490,10 +1523,10 @@ def branch_resolve(
                 REPO_ROOT, exclude_norm
             )
 
-            # DEPTH-0 POLICY (hard rule): at the surface (depth==0), convergence
-            # links must NEVER point to nodes/* pages — only fragments/* and root
-            # .html pages are allowed.  Filter out any nodes/* candidates here.
-            if depth == 0:
+            # depth>=1 only reaches here (depth==0 is always blocked above).
+            # Legacy DEPTH-0 nodes/* filter retained as dead-code safety net
+            # (should never fire but kept to avoid silent regression).
+            if depth == 0:  # pragma: no-cover — blocked above, safety net only
                 filtered_candidates = []
                 for cand_page, cand_words in existing_candidates:
                     try:
@@ -1502,7 +1535,7 @@ def branch_resolve(
                         cand_rel = str(cand_page).replace('\\', '/')
                     if cand_rel.startswith('nodes/'):
                         print(
-                            f'[branch_publish] DEPTH0-POLICY: candidate "{cand_rel}" '
+                            f'[branch_publish] DEPTH0-POLICY (safety net): candidate "{cand_rel}" '
                             f'blocked at depth=0 — nodes/* links are not allowed at surface.',
                             file=sys.stderr,
                         )
@@ -1666,9 +1699,13 @@ def branch_resolve(
             log_record['dest_page'] = str(node_path.relative_to(REPO_ROOT)).replace('\\', '/')
             log_record['dest_type'] = dest_type
             log_record['dest_roll'] = dest_roll
+            if depth == 0:
+                log_record['depth0_unique_branch'] = True
+                log_record['depth0_convergence_blocked'] = 'hard-rule: depth0 always creates unique destination'
             summary.append(
                 f'  depth={depth}  LINK  → nodes/{node_slug}.html  ({dest_type})'
                 f'  pos={cascade_pos}  orient={orientation}  insert={ins_zone}@{ins_idx}/{n_existing}'
+                + ('  *** DEPTH0-UNIQUE-BRANCH: new unique destination ***' if depth == 0 else '')
             )
 
             # If destination is a node (junction), recursively plant the content there
