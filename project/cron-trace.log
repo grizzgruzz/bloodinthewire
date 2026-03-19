@@ -15,3 +15,4 @@ DRY   ts=2026-03-19T01:21:36Z  run_gate_roll=0.1995  p_run=1.00  media_gate_roll
 DRY   ts=2026-03-19T01:22:09Z  run_gate_roll=0.5590  p_run=1.00  media_gate_roll=0.2342  p_media=0.70  media=yes (dry-run, would use library)  mode=auto-generate  depth_cap=30
 DRY   ts=2026-03-19T03:26:59Z  run_gate_roll=0.6073  p_run=1.00  media_gate_roll=0.7342  p_media=0.70  media=no  title='test :: validator gate'  depth_cap=30
 PUB   ts=2026-03-19T03:27:05Z  run_gate_roll=0.8891  p_run=1.00  media_gate_roll=0.2027  p_media=0.70  media=no  title='validator gate test entry'  depth_cap=30  validator=ok  repairs=0  new_pages=1
+PUB   ts=2026-03-19T03:45:37Z  run_gate_roll=0.6859  p_run=0.50  media_gate_roll=0.0253  p_media=0.70  media=yes  img_src=incoming  img=9939efcb-5ae7-4050-b1f7-0e648f164a22_20260318-204537.png  title='The White Truck Pattern'  depth_cap=30  validator=ok  repairs=0  new_pages=1

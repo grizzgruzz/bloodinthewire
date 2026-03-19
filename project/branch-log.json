@@ -977,6 +977,29 @@
       "convergence": true,
       "convergence_score": 1,
       "convergence_threshold": 1
+    },
+    {
+      "entry_id": "the-white-truck-pattern",
+      "title": "The White Truck Pattern",
+      "depth": 0,
+      "roll": 0,
+      "orientation": "vertical",
+      "insertion_index": 0,
+      "insertion_zone": "top",
+      "n_existing_at_publish": 15,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-19T03:45:54Z",
+      "posted_date": "2026-03-18",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "project/assets/web/9939efcb-5ae7-4050-b1f7-0e648f164a22_20260318-204537.png",
+      "image_anti_reuse_applied": false,
+      "action": "link-existing",
+      "dest_page": "fragments/sighting-0002.html",
+      "dest_type": "existing-content",
+      "convergence": true,
+      "convergence_score": 2,
+      "convergence_threshold": 1
     }
   ]
 }
