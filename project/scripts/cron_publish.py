@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-cron_publish.py  v2
+cron_publish.py  v3
 ===================
 Cron orchestration wrapper for the Blood in the Wire automated publish pipeline.
 
@@ -74,6 +74,17 @@ TYPICAL CRON USAGE
 
   # Always run (testing/forced dry-run)
   python3 project/scripts/cron_publish.py --run-probability 1.0 --dry-run
+
+VALIDATOR GATE (v3)
+-------------------
+After branch_publish.py completes and BEFORE any git push, validate_site.py
+is run as a mandatory gate.  If validation fails:
+  - Push is blocked (invalid output is never pushed).
+  - Auto-repair is attempted for deterministic failures (broken img tags).
+  - If repair succeeds and re-validation passes → push proceeds normally.
+  - If repair fails or issues are non-deterministic → rollback (git checkout)
+    of all site changes, log VALIDATE_FAIL trace line, exit non-zero.
+  - health_report.py records validation failures in the daily health log.
 
 USAGE
 -----
@@ -184,6 +195,7 @@ def auto_commit_push(commit_message: str) -> tuple[bool, str]:
         'nodes',
         'project/branch-log.json',
         'project/cron-trace.log',
+        'project/logs',
         'project/assets/web',
         'project/assets/published',
         'project/assets/library',
@@ -214,6 +226,118 @@ def auto_commit_push(commit_message: str) -> tuple[bool, str]:
         return False, f'git_push_failed:{push.stderr.strip() or push.stdout.strip()}'
 
     return True, 'pushed'
+
+
+def run_validator_gate(
+    new_pages: list[str],
+    auto_repair: bool = True,
+) -> tuple[bool, list[str], int]:
+    """
+    Run validate_site.py as the post-publish gate before any git push.
+
+    Returns: (passed, failures, repairs_made)
+    """
+    validate_script = SCRIPT_DIR / 'validate_site.py'
+    cmd = [sys.executable, str(validate_script)]
+    if new_pages:
+        cmd += ['--new-pages'] + new_pages
+    if auto_repair:
+        cmd += ['--auto-repair']
+
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+
+    failures = []
+    repairs_made = 0
+
+    for line in result.stdout.splitlines():
+        if line.startswith('VALIDATE_OK'):
+            # parse repairs count
+            for part in line.split():
+                if part.startswith('repairs='):
+                    try:
+                        repairs_made = int(part.split('=', 1)[1])
+                    except ValueError:
+                        pass
+        elif line.startswith('VALIDATE_FAIL'):
+            pass  # summary line, not a failure detail
+        elif line.strip().startswith('FAIL:'):
+            failures.append(line.strip()[5:].strip())
+
+    if result.returncode == 0:
+        return True, failures, repairs_made
+    else:
+        return False, failures, repairs_made
+
+
+def rollback_site_changes() -> tuple[bool, str]:
+    """
+    Rollback all uncommitted changes to public site files after a validation failure.
+
+    Runs: git checkout -- index.html fragments/ nodes/ project/assets/web/
+    Only rolls back the generated/published files, not config or logs.
+
+    Returns: (ok, status_text)
+    """
+    rollback_cmd = [
+        'git', 'checkout', '--',
+        'index.html',
+        'fragments',
+        'nodes',
+        'project/assets/web',
+    ]
+    result = subprocess.run(
+        rollback_cmd, cwd=str(REPO_ROOT), capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        return False, f'rollback_failed:{result.stderr.strip() or result.stdout.strip()}'
+    return True, 'rolled_back'
+
+
+def run_health_report(
+    date_str: str,
+    validation_failures: list[str],
+    force: bool = False,
+) -> None:
+    """Run health_report.py to append/update the daily health log."""
+    health_script = SCRIPT_DIR / 'health_report.py'
+    if not health_script.exists():
+        return
+    cmd = [sys.executable, str(health_script), '--date', date_str]
+    if force:
+        cmd.append('--force')
+    if validation_failures:
+        cmd += ['--validation-failures'] + validation_failures
+    try:
+        subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30)
+    except Exception as exc:
+        print(f'[cron_publish] WARNING: health_report.py failed: {exc}', file=sys.stderr)
+
+
+def _get_new_pages_from_log(pre_entry_count: int) -> list[str]:
+    """
+    Return list of newly created page paths (relative to repo root) by
+    comparing branch-log entry count before and after branch_publish.
+    """
+    new_pages = []
+    try:
+        data = json.loads(BRANCH_LOG.read_text(encoding='utf-8'))
+        entries = data.get('entries', [])
+        for entry in entries[pre_entry_count:]:
+            dest = entry.get('dest_page', '')
+            if dest and dest not in new_pages:
+                new_pages.append(dest)
+    except Exception:
+        pass
+    return new_pages
+
+
+def _count_branch_log_entries() -> int:
+    """Return current count of entries in branch-log.json."""
+    try:
+        data = json.loads(BRANCH_LOG.read_text(encoding='utf-8'))
+        return len(data.get('entries', []))
+    except Exception:
+        return 0
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -535,6 +659,9 @@ def main() -> int:
     if image_source:
         bp_args += ['--image-source', image_source]
 
+    # Snapshot branch-log entry count BEFORE branch_publish runs
+    pre_entry_count = _count_branch_log_entries()
+
     # Change to repo root so branch_publish.py resolves paths correctly
     bp_result = subprocess.run(
         [sys.executable] + bp_args,
@@ -551,7 +678,62 @@ def main() -> int:
         )
         print(trace, file=sys.stderr)
         append_trace(trace)
+        run_health_report(posted_date, [f'branch_publish_failed rc={bp_result.returncode}'])
         return bp_result.returncode
+
+    # Detect newly created pages for reachability check
+    new_pages = _get_new_pages_from_log(pre_entry_count)
+
+    # ── VALIDATOR GATE (v3) ────────────────────────────────────────────────────
+    # Run validate_site.py BEFORE any git push. If validation fails:
+    #   - auto-repair deterministic issues (broken img tags), re-validate once
+    #   - if still failing: rollback site changes, log VALIDATE_FAIL, block push
+    validation_failures: list[str] = []
+    validator_passed = True
+
+    print('[cron_publish] Running post-publish validator gate ...', file=sys.stderr)
+    passed, failures, repairs = run_validator_gate(new_pages=new_pages, auto_repair=True)
+
+    if not passed:
+        validation_failures = failures
+        val_fail_trace = (
+            f'VALIDATE_FAIL  ts={ts_utc()}'
+            f'  title={title!r}'
+            f'  failures={len(failures)}'
+            f'  repairs_attempted={repairs}'
+            f'  details={";".join(failures[:5])!r}'
+        )
+        print(val_fail_trace, file=sys.stderr)
+        append_trace(val_fail_trace)
+
+        print('[cron_publish] Validator gate FAILED. Rolling back site changes.', file=sys.stderr)
+        rb_ok, rb_status = rollback_site_changes()
+        rollback_trace = (
+            f'ROLLBACK  ts={ts_utc()}'
+            f'  status={rb_status}'
+            f'  reason=validation_failed'
+        )
+        print(rollback_trace, file=sys.stderr)
+        append_trace(rollback_trace)
+
+        run_health_report(posted_date, validation_failures, force=True)
+
+        trace = (
+            f'ERROR ts={now}'
+            f'  run_gate_roll={run_roll:.4f}  p_run={args.run_probability:.2f}'
+            f'  media={media_status}'
+            f'  title={title!r}'
+            f'  err=validation_failed_rollback={rb_status}'
+        )
+        print(trace, file=sys.stderr)
+        append_trace(trace)
+        return 1
+
+    if repairs > 0:
+        print(f'[cron_publish] Validator: {repairs} auto-repair(s) applied and verified.', file=sys.stderr)
+
+    print('[cron_publish] Validator gate PASSED.', file=sys.stderr)
+    validator_passed = True
 
     # ── SUCCESS TRACE ─────────────────────────────────────────────────────────
     trace = (
@@ -561,16 +743,24 @@ def main() -> int:
         f'  media={media_status}'
         f'  title={title!r}'
         f'  depth_cap={args.depth_cap}'
+        f'  validator=ok'
+        f'  repairs={repairs}'
+        f'  new_pages={len(new_pages)}'
     )
     print(trace)
     append_trace(trace)
 
+    # Run health report (nightly — idempotent, won't overwrite existing)
+    run_health_report(posted_date, [])
+
     if args.auto_push:
         safe_title = ''.join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()[:80]
         commit_msg = f'Auto publish: {posted_date} - {safe_title or "untitled"}'
+        # Also stage health report and validate log
         ok, push_state = auto_commit_push(commit_msg)
         push_trace = f'PUSH  ts={ts_utc()}  status={push_state}'
         print(push_trace)
+        append_trace(push_trace)
         if not ok:
             return 1
 

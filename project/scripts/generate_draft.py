@@ -292,6 +292,85 @@ def check_repeat(new_title: str, n: int = RECENT_ENTRIES_TO_CHECK) -> tuple[bool
     return False, ""
 
 
+# Number of recent draft files to check for body-level duplication
+BODY_RECENT_ENTRIES = 10
+BODY_SIMILARITY_THRESHOLD = 0.70   # body content similarity threshold
+
+
+def check_body_repeat(new_body: str, n: int = BODY_RECENT_ENTRIES) -> tuple[bool, str]:
+    """
+    Content integrity check: detect near-duplicate body text against recent entries.
+
+    Compares the new draft's body against the last n published entries by reading
+    saved content files in project/content/entries/.  If no entry files exist,
+    falls back to checking voice/requests/ archive.
+
+    Returns (is_duplicate, matched_source).
+    is_duplicate=True means the body is too similar to a recent entry.
+
+    This is a BEST-EFFORT check: if no prior bodies can be loaded, returns False
+    (no false positives — we never block on missing reference data).
+    """
+    if not new_body or len(new_body.strip()) < 50:
+        return False, ""
+
+    entries_dir = PROJECT_DIR / "content" / "entries"
+    voice_requests_dir = PROJECT_DIR / "voice" / "requests"
+
+    # Collect recent body texts from saved entries
+    prior_bodies: list[tuple[str, str]] = []   # (source_label, body_text)
+
+    if entries_dir.is_dir():
+        # Entries saved as .md or .html.frag files; read their text content
+        entry_files = sorted(entries_dir.glob("*"), key=lambda f: f.stat().st_mtime, reverse=True)
+        for ef in entry_files[:n]:
+            try:
+                text = ef.read_text(encoding="utf-8")
+                # Strip HTML tags for comparison
+                plain = re.sub(r"<[^>]+>", " ", text)
+                plain = re.sub(r"\s+", " ", plain).strip()
+                if len(plain) >= 50:
+                    prior_bodies.append((ef.name, plain))
+            except Exception:
+                pass
+
+    # Also check voice request archives (contain full draft bodies)
+    if voice_requests_dir.is_dir() and len(prior_bodies) < n:
+        req_files = sorted(voice_requests_dir.glob("voice-draft-*.txt"),
+                          key=lambda f: f.stat().st_mtime, reverse=True)
+        for rf in req_files[:n - len(prior_bodies)]:
+            try:
+                text = rf.read_text(encoding="utf-8")
+                # Extract BODY section
+                bm = re.search(r"BODY:\s*\n(.*?)(?=\n\s*EVIDENCE_LINE:|\Z)", text,
+                               re.DOTALL | re.MULTILINE)
+                if bm:
+                    body = bm.group(1).strip()
+                    if len(body) >= 50:
+                        prior_bodies.append((rf.name, body))
+            except Exception:
+                pass
+
+    if not prior_bodies:
+        return False, ""
+
+    # Normalise new body for comparison
+    new_plain = re.sub(r"<[^>]+>", " ", new_body)
+    new_plain = re.sub(r"\s+", " ", new_plain).strip().lower()
+    new_norm = re.sub(r"[^a-z0-9 ]", " ", new_plain)
+
+    for source_label, prior_text in prior_bodies:
+        prior_plain = re.sub(r"<[^>]+>", " ", prior_text)
+        prior_plain = re.sub(r"\s+", " ", prior_plain).strip().lower()
+        prior_norm = re.sub(r"[^a-z0-9 ]", " ", prior_plain)
+        sim = _simple_similarity(new_norm, prior_norm)
+        log.debug("Body similarity: new vs %r -> %.3f", source_label, sim)
+        if sim >= BODY_SIMILARITY_THRESHOLD:
+            return True, source_label
+
+    return False, ""
+
+
 # ─── Main pipeline ────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -443,6 +522,34 @@ def main() -> int:
                 "Skipping publish to avoid stale concept reuse.",
                 parsed["title"], matched_title,
             )
+            print(f"DRAFT_TITLE={parsed['title']}")  # expose for cron trace
+            return 2  # exit code 2 = SKIP_REPEAT
+
+        # Content integrity check: body-level duplicate detection
+        body_is_dup, body_matched = check_body_repeat(parsed.get("body", ""))
+        if body_is_dup and not anti_repeat_injected:
+            log.warning(
+                "CONTENT-INTEGRITY: new body too similar to recent entry %r — regenerating.",
+                body_matched,
+            )
+            # Inject anti-repeat instruction and retry
+            anti_repeat_note = (
+                f"\n\nIMPORTANT: Your generated body content is too similar to a recently published entry ({body_matched}).\n"
+                f"Generate completely different content — new observations, new details, new atmosphere.\n"
+                f"Change the setting, the observer's focus, the specific evidence documented.\n"
+            )
+            prompt_text = prompt_text + anti_repeat_note
+            anti_repeat_injected = True
+            parsed = None
+            continue
+
+        if body_is_dup and anti_repeat_injected:
+            log.error(
+                "SKIP_REPEAT: after content-integrity retry, body still too similar to %r. "
+                "Skipping publish.",
+                body_matched,
+            )
+            print(f"DRAFT_TITLE={parsed['title']}")  # expose for cron trace
             return 2  # exit code 2 = SKIP_REPEAT
 
         # All good — break loop

@@ -954,6 +954,29 @@
       "link_type": "spawn",
       "timestamp_utc": "2026-03-19T02:47:15Z",
       "dry_run": false
+    },
+    {
+      "entry_id": "validator-gate-test-entry",
+      "title": "validator gate test entry",
+      "depth": 0,
+      "roll": 0,
+      "orientation": "horizontal",
+      "insertion_index": 0,
+      "insertion_zone": "top",
+      "n_existing_at_publish": 14,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-19T03:27:05Z",
+      "posted_date": "2026-03-18",
+      "image_source": "library",
+      "image_blocked": false,
+      "image_web_path": "",
+      "image_anti_reuse_applied": false,
+      "action": "link-existing",
+      "dest_page": "fragments/signal-test-inline.html",
+      "dest_type": "existing-content",
+      "convergence": true,
+      "convergence_score": 1,
+      "convergence_threshold": 1
     }
   ]
 }

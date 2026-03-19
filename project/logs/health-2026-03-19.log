@@ -1,0 +1,33 @@
+# bloodinthewire health report — 2026-03-19
+# generated: 2026-03-19T03:26:48Z
+
+## run stats
+  attempted:            7
+  published:            5
+  skipped:              2
+  errors:               0
+  validation_failures:  0
+
+## site growth
+  total pages:          40  (index=1, fragments=10, nodes=29)
+  new pages today:      4
+  tree max depth:       6
+  inline link count:    25
+  last modified:        nodes/node-the-feed-shows-retro-d2-20260318-194715.html
+
+## new pages today
+  + fragments/not-me-but-me.html
+  + fragments/same-place-same-time.html
+  + nodes/node-signal-overlap-t-d1-20260318-192440.html
+  + nodes/node-signal-overlap-t-d0-20260318-192440.html
+
+## validation: OK (no failures)
+
+## cron activity today
+  PUB   ts=2026-03-19T00:02:23Z  run_gate_roll=0.8386  p_run=0.50  media_gate_roll=0.5843  p_media=0.70  media=yes  img_src=incoming  img=11a704c6-925c-40c6-b640-c14f8ec0b4af_20260318-170223.png  title='Not Me. But Me.'  depth_cap=30
+  PUB   ts=2026-03-19T00:02:38Z  run_gate_roll=0.0988  p_run=0.50  media_gate_roll=0.8145  p_media=0.70  media=no (media_gate=False)  title='The Leg Changed'  depth_cap=30
+  PUB   ts=2026-03-19T00:02:51Z  run_gate_roll=0.0070  p_run=0.50  media_gate_roll=0.8609  p_media=0.70  media=no (media_gate=False)  title='Same Place Same Time'  depth_cap=30
+  PUB   ts=2026-03-19T00:03:05Z  run_gate_roll=0.1614  p_run=0.50  media_gate_roll=0.8430  p_media=0.70  media=no (media_gate=False)  title='The Van Is Always There'  depth_cap=30
+  PUB   ts=2026-03-19T00:03:19Z  run_gate_roll=0.8441  p_run=0.50  media_gate_roll=0.7828  p_media=0.70  media=no (media_gate=False)  title='The Elephant Clock Timing'  depth_cap=30
+  DRY   ts=2026-03-19T01:21:36Z  run_gate_roll=0.1995  p_run=1.00  media_gate_roll=0.6814  p_media=0.70  media=yes (dry-run, would use library)  mode=auto-generate  depth_cap=30
+  DRY   ts=2026-03-19T01:22:09Z  run_gate_roll=0.5590  p_run=1.00  media_gate_roll=0.2342  p_media=0.70  media=yes (dry-run, would use library)  mode=auto-generate  depth_cap=30
