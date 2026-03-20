@@ -24,3 +24,4 @@ DRY   ts=2026-03-19T21:41:34Z  run_gate_roll=0.3100  p_run=1.00  media_gate_roll
 SKIP  ts=2026-03-19T22:00:10Z  run_gate_roll=0.5795  p_run=0.50
 SKIP  ts=2026-03-20T04:00:04Z  run_gate_roll=0.5720  p_run=0.50
 SKIP  ts=2026-03-20T16:00:05Z  run_gate_roll=0.7021  p_run=0.50
+PUB   ts=2026-03-20T22:00:04Z  run_gate_roll=0.0966  p_run=0.50  media_gate_roll=0.0348  p_media=0.70  media=yes  img_src=incoming  img=129626e5-a0cd-42d2-8ad7-aff2456d81b5_20260320-150004.jpg  title='Pattern in the Mirror'  depth_cap=30  validator=ok  repairs=0  new_pages=0

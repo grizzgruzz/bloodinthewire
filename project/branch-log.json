@@ -1077,6 +1077,25 @@
       "image_anti_reuse_applied": false,
       "action": "inline",
       "page": "index.html"
+    },
+    {
+      "entry_id": "pattern-in-the-mirror",
+      "title": "Pattern in the Mirror",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "vertical",
+      "insertion_index": 0,
+      "insertion_zone": "top",
+      "n_existing_at_publish": 19,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-20T22:00:17Z",
+      "posted_date": "2026-03-20",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "project/assets/web/129626e5-a0cd-42d2-8ad7-aff2456d81b5_20260320-150004.jpg",
+      "image_anti_reuse_applied": false,
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }
