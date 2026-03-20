@@ -22,3 +22,4 @@ PUB   ts=2026-03-19T16:00:11Z  run_gate_roll=0.0063  p_run=0.50  media_gate_roll
 PUSH  ts=2026-03-19T16:00:34Z  status=pushed
 DRY   ts=2026-03-19T21:41:34Z  run_gate_roll=0.3100  p_run=1.00  media_gate_roll=0.8010  p_media=0.70  media=no (dry-run)  mode=auto-generate  depth_cap=30
 SKIP  ts=2026-03-19T22:00:10Z  run_gate_roll=0.5795  p_run=0.50
+SKIP  ts=2026-03-20T04:00:04Z  run_gate_roll=0.5720  p_run=0.50
