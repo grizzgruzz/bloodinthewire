@@ -1,0 +1,24 @@
+# bloodinthewire health report — 2026-03-21
+# generated: 2026-03-21T16:00:40Z
+
+## run stats
+  attempted:            1
+  published:            0
+  skipped:              0
+  errors:               1
+  validation_failures:  1
+
+## site growth
+  total pages:          44  (index=1, fragments=10, nodes=33)
+  new pages today:      0
+  tree max depth:       6
+  inline link count:    27
+  last modified:        index.html
+
+## validation failures
+  ! abspath:index.html: absolute path in served HTML: "/home/gruzz/bloodinthewire/project/assets/web/5010e945-9bca-432f-9000-dfd0cfa27556_20260321-090013.png"
+
+## cron activity today
+  ERROR ts=2026-03-21T04:00:12Z  run_gate_roll=0.4227  p_run=0.50  media=no (media_gate=False)  title='Everything Keeps Adding Up'  err=branch_publish_failed_rc=2
+  VALIDATE_FAIL  ts=2026-03-21T16:00:40Z  title='The Lie in the Light'  failures=1  repairs_attempted=0  details='abspath:index.html: absolute path in served HTML: "/home/gruzz/bloodinthewire/project/assets/web/5010e945-9bca-432f-9000-dfd0cfa27556_20260321-090013.png"'
+  ROLLBACK  ts=2026-03-21T16:00:40Z  status=rolled_back  reason=validation_failed
