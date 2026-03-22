@@ -31,3 +31,6 @@ VALIDATE_FAIL  ts=2026-03-21T16:00:40Z  title='The Lie in the Light'  failures=1
 ROLLBACK  ts=2026-03-21T16:00:40Z  status=rolled_back  reason=validation_failed
 ERROR ts=2026-03-21T16:00:13Z  run_gate_roll=0.2476  p_run=0.50  media=yes  img_src=incoming  img=5010e945-9bca-432f-9000-dfd0cfa27556_20260321-090013.png  title='The Lie in the Light'  err=validation_failed_rollback=rolled_back
 PUB   ts=2026-03-21T22:00:12Z  run_gate_roll=0.4171  p_run=0.50  media_gate_roll=0.3682  p_media=0.70  media=yes  img_src=library  img=-The-Elephant-Clock-Folio-from-a-Book-of-the-Knowledge-of-Ingenious-Mechanical-Devices-by-al-Jazari-MET-DP234075_20260321-150012.jpg  title='The Clockwork World'  depth_cap=30  validator=ok  repairs=1  new_pages=1
+PUSH  ts=2026-03-21T22:00:30Z  status=pushed
+ERROR ts=2026-03-22T04:00:12Z  run_gate_roll=0.0606  p_run=0.50  media=no (media_gate=False)  title='Five Links in the Dirt'  err=branch_publish_failed_rc=2
+SKIP  ts=2026-03-22T16:00:12Z  run_gate_roll=0.9546  p_run=0.50

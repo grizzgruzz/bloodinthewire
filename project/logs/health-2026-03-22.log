@@ -1,0 +1,21 @@
+# bloodinthewire health report — 2026-03-22
+# generated: 2026-03-22T06:30:12Z
+
+## run stats
+  attempted:            1
+  published:            0
+  skipped:              0
+  errors:               1
+  validation_failures:  0
+
+## site growth
+  total pages:          45  (index=1, fragments=10, nodes=34)
+  new pages today:      0
+  tree max depth:       6
+  inline link count:    27
+  last modified:        nodes/node-the-clockwork-wo-d0-20260321-150023.html
+
+## validation: OK (no failures)
+
+## cron activity today
+  ERROR ts=2026-03-22T04:00:12Z  run_gate_roll=0.0606  p_run=0.50  media=no (media_gate=False)  title='Five Links in the Dirt'  err=branch_publish_failed_rc=2
