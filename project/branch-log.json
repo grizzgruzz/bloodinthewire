@@ -1076,7 +1076,10 @@
       "image_web_path": "",
       "image_anti_reuse_applied": false,
       "action": "inline",
-      "page": "index.html"
+      "page": "index.html",
+      "_removed": true,
+      "_removed_reason": "user request: duplicate media",
+      "_removed_utc": "2026-03-23T11:00:00Z"
     },
     {
       "entry_id": "pattern-in-the-mirror",

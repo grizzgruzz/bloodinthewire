@@ -15,9 +15,9 @@ Responsibilities
        incoming/ is COMPLETELY FORBIDDEN.  Only library/ assets may be used.
        This is a hard rule — incoming/ images must never appear on linked /
        recursive / lower-level pages.
-2. Consume-on-use:       The selected file is MOVED out of incoming (or
-   copied from library) to assets/published/ with a timestamped name, so it
-   cannot be accidentally reused.
+2. Consume-on-use:       The selected file is MOVED out of incoming OR
+   MOVED out of library to assets/published/ with a timestamped name, so it
+   cannot be accidentally reused. (Hard rule: source file must be gone after pull.)
 3. Metadata stripping:   Before the asset is placed in assets/web/ (the
    web-facing folder), EXIF/IPTC/XMP metadata is stripped via:
      a. Pillow re-encode (preferred — dependency already present)
@@ -76,6 +76,7 @@ INCOMING_DIR = ASSETS_DIR / "incoming"
 LIBRARY_DIR  = ASSETS_DIR / "library"
 PUBLISHED_DIR = ASSETS_DIR / "published"
 WEB_DIR       = ASSETS_DIR / "web"
+USED_LIBRARY_DIR = ASSETS_DIR / "used_library"
 
 # Accepted extensions (lowercase).  Anything else is skipped.
 ACCEPTED_EXT = frozenset({".jpg", ".jpeg", ".png"})
@@ -269,8 +270,12 @@ def strip_metadata(src: Path, dst: Path) -> str:
 
 def consume_and_publish(src: Path, queue: str) -> Path:
     """
-    Move (incoming) or copy (library) *src* into published/ with a timestamp
-    suffix so the original is archived and cannot be reused.
+    Move (incoming) or move (library) *src* into published/ with a timestamp
+    suffix so the original is consumed and cannot be reused.
+
+    HARD RULE: source media is deleted from its origin queue by the pull
+    operation (implemented as move). If source still exists after pull,
+    this function raises an error.
 
     If *src* is from incoming/ and has a matching .note.txt sidecar
     (same stem, e.g. ``<uuid>.note.txt`` alongside ``<uuid>.png``),
@@ -300,10 +305,18 @@ def consume_and_publish(src: Path, queue: str) -> Path:
             )
         else:
             log.debug("No .note.txt sidecar found for %s — skipping", src.name)
-    else:
-        shutil.copy2(src, published_path)
-        log.info("ARCHIVE  copied %s → published/%s", src.name, published_name)
+    else:  # queue == "library"
+        # HARD RULE: consume library media on pull (no copy fallback).
+        # This removes it from library/ immediately so it can never be selected again.
+        shutil.move(str(src), published_path)
+        log.info("CONSUME  moved %s → published/%s (from library)", src.name, published_name)
         # Library assets have no user-supplied sidecars; nothing to move.
+
+    # Belt-and-suspenders enforcement of hard rule: source must no longer exist.
+    if src.exists():
+        raise RuntimeError(
+            f"Hard rule violation: source media still exists after pull: {src}"
+        )
 
     return published_path
 
@@ -326,7 +339,7 @@ def run(dry_run: bool = False, level: str = "surface") -> Path:
     Returns the web-ready Path (in assets/web/).
     """
     # Ensure all dirs exist
-    for d in (INCOMING_DIR, LIBRARY_DIR, PUBLISHED_DIR, WEB_DIR):
+    for d in (INCOMING_DIR, LIBRARY_DIR, PUBLISHED_DIR, WEB_DIR, USED_LIBRARY_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
     # 1. Select source (level-aware)
@@ -337,7 +350,7 @@ def run(dry_run: bool = False, level: str = "surface") -> Path:
                  source.name, queue, level)
         return source
 
-    # 2. Consume (move from incoming) or archive (copy from library)
+    # 2. Consume (move) from incoming or library (hardcoded no-reuse rule)
     published_path = consume_and_publish(source, queue)
 
     # 3. Strip metadata into web/
