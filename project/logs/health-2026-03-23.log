@@ -1,0 +1,21 @@
+# bloodinthewire health report — 2026-03-23
+# generated: 2026-03-23T06:30:12Z
+
+## run stats
+  attempted:            1
+  published:            0
+  skipped:              1
+  errors:               0
+  validation_failures:  0
+
+## site growth
+  total pages:          46  (index=1, fragments=10, nodes=35)
+  new pages today:      0
+  tree max depth:       6
+  inline link count:    27
+  last modified:        nodes/node-the-gears-always-d0-20260322-150024.html
+
+## validation: OK (no failures)
+
+## cron activity today
+  SKIP  ts=2026-03-23T04:00:12Z  run_gate_roll=0.8110  p_run=0.50

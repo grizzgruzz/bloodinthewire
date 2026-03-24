@@ -1177,6 +1177,25 @@
       "_removed": true,
       "_removed_reason": "user request: wrong clock duplicate, nuke this one",
       "_removed_utc": "2026-03-23T11:13:00Z"
+    },
+    {
+      "entry_id": "the-same-truck-again",
+      "title": "The Same Truck Again",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "vertical",
+      "insertion_index": 20,
+      "insertion_zone": "bottom",
+      "n_existing_at_publish": 20,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-24T04:00:17Z",
+      "posted_date": "2026-03-23",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "project/assets/web/1c39e02b-4051-4c6c-ace3-2c572523de6c_20260323-210008.jpg",
+      "image_anti_reuse_applied": false,
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }
