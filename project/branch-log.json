@@ -1196,6 +1196,25 @@
       "image_anti_reuse_applied": false,
       "action": "inline",
       "page": "index.html"
+    },
+    {
+      "entry_id": "the-man-in-tan",
+      "title": "The Man in Tan",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "horizontal",
+      "insertion_index": 21,
+      "insertion_zone": "bottom",
+      "n_existing_at_publish": 21,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-25T16:00:21Z",
+      "posted_date": "2026-03-25",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "project/assets/web/25796236-c4a5-434b-8579-61b72260b9ee_20260325-090007.jpg",
+      "image_anti_reuse_applied": false,
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }

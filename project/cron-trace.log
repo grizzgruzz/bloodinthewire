@@ -44,3 +44,4 @@ PUSH  ts=2026-03-24T04:00:21Z  status=pushed
 ERROR ts=2026-03-24T16:00:15Z  run_gate_roll=0.3872  p_run=0.50  media=no (media_gate=False)  title='Proof of the Pattern'  err=branch_publish_failed_rc=2
 SKIP  ts=2026-03-24T22:00:03Z  run_gate_roll=0.5422  p_run=0.50
 SKIP  ts=2026-03-25T04:00:04Z  run_gate_roll=0.5367  p_run=0.50
+PUB   ts=2026-03-25T16:00:07Z  run_gate_roll=0.2824  p_run=0.50  media_gate_roll=0.3026  p_media=0.70  media=yes  img_src=incoming  img=25796236-c4a5-434b-8579-61b72260b9ee_20260325-090007.jpg  title='The Man in Tan'  depth_cap=30  validator=ok  repairs=0  new_pages=0

@@ -1,0 +1,21 @@
+# bloodinthewire health report — 2026-03-25
+# generated: 2026-03-25T06:30:10Z
+
+## run stats
+  attempted:            1
+  published:            0
+  skipped:              1
+  errors:               0
+  validation_failures:  0
+
+## site growth
+  total pages:          45  (index=1, fragments=10, nodes=34)
+  new pages today:      0
+  tree max depth:       6
+  inline link count:    27
+  last modified:        index.html
+
+## validation: OK (no failures)
+
+## cron activity today
+  SKIP  ts=2026-03-25T04:00:04Z  run_gate_roll=0.5367  p_run=0.50
