@@ -1,0 +1,22 @@
+# bloodinthewire health report — 2026-03-26
+# generated: 2026-03-26T06:30:08Z
+
+## run stats
+  attempted:            1
+  published:            1
+  skipped:              0
+  errors:               0
+  validation_failures:  0
+
+## site growth
+  total pages:          45  (index=1, fragments=10, nodes=34)
+  new pages today:      0
+  tree max depth:       6
+  inline link count:    27
+  last modified:        index.html
+
+## validation: OK (no failures)
+
+## cron activity today
+  PUB   ts=2026-03-26T04:00:07Z  run_gate_roll=0.0840  p_run=0.50  media_gate_roll=0.6944  p_media=0.70  media=yes  img_src=incoming  img=7ac30ae6-e454-43ca-af2e-d432096034dc_20260325-210007.jpg  title='He looked right at me'  depth_cap=30  validator=ok  repairs=0  new_pages=0
+  PUSH  ts=2026-03-26T04:00:19Z  status=pushed
