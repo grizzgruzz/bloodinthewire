@@ -1234,6 +1234,34 @@
       "image_anti_reuse_applied": false,
       "action": "inline",
       "page": "index.html"
+    },
+    {
+      "entry_id": "the-gap-in-between",
+      "title": "The Gap in Between",
+      "depth": 0,
+      "roll": 0,
+      "orientation": "vertical",
+      "insertion_index": 23,
+      "insertion_zone": "bottom",
+      "n_existing_at_publish": 23,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-26T22:00:18Z",
+      "posted_date": "2026-03-26",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "project/assets/web/966b9fc1-6d8f-4cc8-9e69-6171eae9aa0d_20260326-150005.png",
+      "image_anti_reuse_applied": false,
+      "inline_link_type": "none",
+      "inline_anchor_text": "",
+      "inline_dest_page": "",
+      "inline_dest_href": "",
+      "inline_skipped": true,
+      "action": "link",
+      "dest_page": "nodes/node-the-gap-in-betwe-d0-20260326-150018.html",
+      "dest_type": "content",
+      "dest_roll": 1,
+      "depth0_unique_branch": true,
+      "depth0_convergence_blocked": "hard-rule: depth0 always creates unique destination"
     }
   ]
 }

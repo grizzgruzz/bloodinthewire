@@ -50,3 +50,4 @@ SKIP  ts=2026-03-25T22:00:04Z  run_gate_roll=0.9063  p_run=0.50
 PUB   ts=2026-03-26T04:00:07Z  run_gate_roll=0.0840  p_run=0.50  media_gate_roll=0.6944  p_media=0.70  media=yes  img_src=incoming  img=7ac30ae6-e454-43ca-af2e-d432096034dc_20260325-210007.jpg  title='He looked right at me'  depth_cap=30  validator=ok  repairs=0  new_pages=0
 PUSH  ts=2026-03-26T04:00:19Z  status=pushed
 SKIP  ts=2026-03-26T16:00:08Z  run_gate_roll=0.6243  p_run=0.50
+PUB   ts=2026-03-26T22:00:05Z  run_gate_roll=0.3303  p_run=0.50  media_gate_roll=0.5758  p_media=0.70  media=yes  img_src=incoming  img=966b9fc1-6d8f-4cc8-9e69-6171eae9aa0d_20260326-150005.png  title='The Gap in Between'  depth_cap=30  validator=ok  repairs=0  new_pages=1
