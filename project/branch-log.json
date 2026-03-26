@@ -1215,6 +1215,25 @@
       "image_anti_reuse_applied": false,
       "action": "inline",
       "page": "index.html"
+    },
+    {
+      "entry_id": "he-looked-right-at-me",
+      "title": "He looked right at me",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "vertical",
+      "insertion_index": 0,
+      "insertion_zone": "top",
+      "n_existing_at_publish": 22,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-26T04:00:18Z",
+      "posted_date": "2026-03-25",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "project/assets/web/7ac30ae6-e454-43ca-af2e-d432096034dc_20260325-210007.jpg",
+      "image_anti_reuse_applied": false,
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }
