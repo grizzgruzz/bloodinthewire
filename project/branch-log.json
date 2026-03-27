@@ -1262,6 +1262,25 @@
       "dest_roll": 1,
       "depth0_unique_branch": true,
       "depth0_convergence_blocked": "hard-rule: depth0 always creates unique destination"
+    },
+    {
+      "entry_id": "the-faces-are-always-looking",
+      "title": "The Faces Are Always Looking",
+      "depth": 0,
+      "roll": 1,
+      "orientation": "horizontal",
+      "insertion_index": 12,
+      "insertion_zone": "middle",
+      "n_existing_at_publish": 24,
+      "target_page": "index.html",
+      "timestamp_utc": "2026-03-27T22:00:19Z",
+      "posted_date": "2026-03-27",
+      "image_source": "incoming",
+      "image_blocked": false,
+      "image_web_path": "project/assets/web/cf04fa50-fe84-44c3-8a5e-4d24ced2e8c3_20260327-150005.jpg",
+      "image_anti_reuse_applied": false,
+      "action": "inline",
+      "page": "index.html"
     }
   ]
 }
