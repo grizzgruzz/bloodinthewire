@@ -57,3 +57,5 @@ SKIP  ts=2026-03-27T16:00:06Z  run_gate_roll=0.5956  p_run=0.50
 PUB   ts=2026-03-27T22:00:05Z  run_gate_roll=0.1249  p_run=0.50  media_gate_roll=0.2665  p_media=0.70  media=yes  img_src=incoming  img=cf04fa50-fe84-44c3-8a5e-4d24ced2e8c3_20260327-150005.jpg  title='The Faces Are Always Looking'  depth_cap=30  validator=ok  repairs=0  new_pages=0
 PUSH  ts=2026-03-27T22:00:20Z  status=pushed
 SKIP  ts=2026-03-28T04:00:01Z  run_gate_roll=0.7917  p_run=0.50
+ERROR ts=2026-03-28T16:00:02Z  run_gate_roll=0.3684  p_run=0.50  media=no (media_gate=False)  title='The Wrong Faces'  err=branch_publish_failed_rc=2
+SKIP  ts=2026-03-28T22:00:02Z  run_gate_roll=0.7441  p_run=0.50
